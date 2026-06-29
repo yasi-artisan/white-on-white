@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data: https://*.githubusercontent.com https://res.cloudinary.com; media-src blob:; frame-src blob: https://console.cloudinary.com; script-src 'self' https://unpkg.com; connect-src 'self' blob: data: https://unpkg.com https://api.github.com https://www.githubstatus.com https://api.cloudflare.com
