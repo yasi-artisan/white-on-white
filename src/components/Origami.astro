@@ -1,0 +1,130 @@
+---
+//
+// Origami.astro — a 2D wireframe that draws on, then folds over itself into a
+// trapezoid.
+//
+// Plugins: DrawSVG (stroke reveal) + MorphSVG (shape morph). The flat crease
+// pattern (src/assets/origami/01.svg) draws on, then each flap folds inward
+// toward the center and the whole figure collapses onto a single trapezoid —
+// the outer flaps fold first, the inner ones last. The timeline yoyos, so it
+// folds then unfolds again in a loop.
+//
+// The unfolded paths come from ./origami-data.ts — edit that object to change
+// the figure. The folded trapezoid target is defined below in `trap`.
+import { orig1 } from "./origami-data";
+
+// Render the unfolded paths server-side so there's real content before JS boots
+// (and as a no-JS fallback).
+const polys = [...orig1.entries()];
+---
+
+<div class="origami">
+  <svg
+    class="origami-svg"
+    viewBox="0 0 603 500"
+    width="603"
+    height="500"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    role="img"
+    aria-label="Origami folding animation"
+  >
+    {polys.map(([name, d]) => <path class="origami-poly" data-name={name} d={d} />)}
+  </svg>
+</div>
+
+<script>
+  import gsap from "gsap";
+  import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
+  import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
+  import { orig1 } from "./origami-data";
+
+  gsap.registerPlugin(MorphSVGPlugin, DrawSVGPlugin);
+
+  type Pt = [number, number];
+
+  /** Pull every coordinate pair out of a path `d` string, in order. */
+  function parsePoints(d: string): Pt[] {
+    const nums = (d.match(/-?\d*\.?\d+(?:[eE][-+]?\d+)?/g) ?? []).map(Number);
+    const pts: Pt[] = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+    return pts;
+  }
+
+  function initOrigami(svg: SVGSVGElement): void {
+    const paths = Array.from(svg.querySelectorAll<SVGPathElement>("path"));
+    const polys = [...orig1.values()].map(parsePoints);
+
+    // Global centroid of the figure (the fold converges here).
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (const pts of polys) for (const [x, y] of pts) (sx += x), (sy += y), n++;
+    const cx = sx / n;
+    const cy = sy / n;
+
+    // Per-flap centroid + its radius from the global center. Outer flaps (larger
+    // radius) will fold first.
+    const radii = polys.map((pts) => {
+      const px = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+      const py = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+      return Math.hypot(px - cx, py - cy);
+    });
+    const maxR = Math.max(...radii) || 1;
+
+    // Folded target: a single trapezoid at the center. Every flap morphs onto
+    // it, so they stack ("fold over itself") and the silhouette becomes a
+    // trapezoid. Replace these numbers with your real folded outline.
+    const tTop = cy - 110;
+    const tBot = cy + 110;
+    const trap = `M${cx - 95} ${tTop}L${cx + 95} ${tTop}L${cx + 150} ${tBot}L${cx - 150} ${tBot}Z`;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    // Start invisible (strokes will draw on).
+    gsap.set(paths, { drawSVG: 0 });
+
+    const tl = gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 0.8 });
+
+    // 1) Draw the unfolded crease pattern on.
+    tl.to(paths, {
+      drawSVG: "100%",
+      duration: 0.8,
+      stagger: 0.05,
+      ease: "power1.inOut",
+    });
+
+    // 2) Fold each flap inward onto the central trapezoid. Larger radius =>
+    // smaller start time => outer flaps fold first, inner flaps last.
+    const drawEnd = 0.8 + 0.05 * (paths.length - 1);
+    paths.forEach((p, i) => {
+      const at = drawEnd + 0.3 + (1 - radii[i] / maxR) * 0.5;
+      tl.to(p, { morphSVG: trap, duration: 1.3, ease: "power2.inOut" }, at);
+    });
+  }
+
+  document.querySelectorAll<SVGSVGElement>(".origami-svg").forEach(initOrigami);
+</script>
+
+<style>
+  .origami {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    background: #fff;
+  }
+
+  .origami-svg {
+    width: min(90vw, 600px);
+    height: auto;
+    overflow: visible;
+  }
+
+  .origami-poly {
+    fill: none;
+    stroke: #111;
+    stroke-width: 2;
+    stroke-linecap: square;
+    stroke-linejoin: round;
+  }
+</style>
