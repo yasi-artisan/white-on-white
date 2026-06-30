@@ -1,8 +1,13 @@
 ---
-import Origami from '../components/Origami.astro';
-import Layout from '../layouts/Layout.astro';
+import Origami from "../components/origami/Origami.astro";
+import ShapeNav from "../components/ShapeNav.astro";
+import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout>
-	<Origami />
+  <Origami config={{ pauseAfterDraw: 2.5, morphDuration: 2.5 }} />
+
+  <ShapeNav
+    labels={["Community Projects", "Installations", "Papermaking/Printmaking"]}
+  />
 </Layout>

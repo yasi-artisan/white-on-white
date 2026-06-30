@@ -1,0 +1,120 @@
+---
+// ShapeNav.astro — renders a <nav> with buttons that mirror and control
+// the active shape of an OrigamiAnimation instance on the page.
+//
+// Props:
+//   labels: string[]  — one label per shape (e.g. ["Community Projects", "Installations"])
+//   class?: string    — optional extra CSS class on the <nav>
+import { shapes } from "./origami/origami-data";
+
+export interface Props {
+  /** Button labels, one per shape. Defaults to each shape's `.label`. */
+  labels?: string[];
+  /** Extra CSS class on the <nav>. */
+  class?: string;
+}
+
+const { labels = shapes.map((s) => s.label), class: extraClass = "" } =
+  Astro.props;
+
+const n = labels.length;
+---
+
+<nav class={`shape-nav ${extraClass}`}>
+  <ul>
+    {
+      labels.map((label, i) => (
+        <li>
+          <button
+            type="button"
+            data-shape-index={i}
+            class:list={["shape-nav-btn", { "is-active": i === 0 }]}
+          >
+            {label}
+          </button>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<script>
+  import type { OrigamiAnimation } from "./origami/origami-animation";
+
+  // --- Wait for the OrigamiAnimation instance to be ready ---------------
+  function whenReady(cb: (anim: OrigamiAnimation) => void, retries = 30): void {
+    const anim = (window as any).__origami as OrigamiAnimation | undefined;
+    if (anim) {
+      cb(anim);
+    } else if (retries > 0) {
+      setTimeout(() => whenReady(cb, retries - 1), 100);
+    }
+  }
+
+  // --- Wire buttons -----------------------------------------------------
+  const buttons = document.querySelectorAll<HTMLButtonElement>(
+    ".shape-nav-btn[data-shape-index]",
+  );
+
+  whenReady((anim) => {
+    // Click → morph to that shape
+    for (const btn of buttons) {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.dataset.shapeIndex);
+        anim.goTo(idx);
+      });
+    }
+
+    // Subscribe to state changes → highlight active + disable during transition
+    anim.onChange(() => {
+      const busy = anim.isTransitioning;
+      for (const btn of buttons) {
+        const match = Number(btn.dataset.shapeIndex) === anim.currentShape;
+        btn.classList.toggle("is-active", match);
+        btn.disabled = busy;
+      }
+    });
+  });
+</script>
+
+<style>
+  .shape-nav {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    translate: -50% 0;
+    z-index: 10;
+  }
+
+  .shape-nav ul {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .shape-nav-btn {
+    background: none;
+    border: 1px solid #111;
+    padding: 0.5rem 1.25rem;
+    font: inherit;
+    font-size: 0.875rem;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      color 0.2s;
+  }
+
+  .shape-nav-btn:hover,
+  .shape-nav-btn.is-active {
+    background: #111;
+    color: #fff;
+  }
+
+  .shape-nav-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+</style>
