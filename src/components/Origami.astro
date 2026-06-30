@@ -1,35 +1,61 @@
 ---
 //
-// Origami.astro — a 2D wireframe that draws on, then folds over itself into a
-// trapezoid.
+// Origami.astro — config-driven origami animation
 //
-// Plugins: DrawSVG (stroke reveal) + MorphSVG (shape morph). The flat crease
-// pattern (src/assets/origami/01.svg) draws on, then each flap folds inward
-// toward the center and the whole figure collapses onto a single trapezoid —
-// the outer flaps fold first, the inner ones last. The timeline yoyos, so it
-// folds then unfolds again in a loop.
+// Timeline:
+//   1. Draw contour of shape A (3px)
+//   2. Stagger-draw inner fold lines of shape A (2px)
+//   3. Pause (configurable)
+//   4. Reverse-draw inner lines of A, hide them
+//   5. Morph contour from shape A → shape B
+//   6. Stagger-draw inner fold lines of shape B
+//   7. Pause
+//   8. Reverse-draw inner lines of B, hide them
+//   9. Morph contour B → A … loop
 //
-// The unfolded paths come from ./origami-data.ts — edit that object to change
-// the figure. The folded trapezoid target is defined below in `trap`.
-import { orig1 } from "./origami-data";
+// All timing is controlled via OrigamiAnimConfig (see ./origami-data.ts).
+import { shapes, defaultConfig, type OrigamiAnimConfig } from "./origami-data";
 
-// Render the unfolded paths server-side so there's real content before JS boots
-// (and as a no-JS fallback).
-const polys = [...orig1.entries()];
+export interface Props {
+  /** Partial overrides for the default animation config. */
+  config?: Partial<OrigamiAnimConfig>;
+}
+
+const { config: userConfig = {} } = Astro.props;
+const cfg: OrigamiAnimConfig = { ...defaultConfig, ...userConfig };
+
+const [shapeA, shapeB] = shapes;
+
+// Serialise the shape contours + config so the client-side script can pick
+// them up without an extra network round-trip.
+const payload = JSON.stringify({
+  contourA: shapeA.contour,
+  contourB: shapeB.contour,
+  config: cfg,
+});
 ---
 
-<div class="origami">
+<div class="origami" data-origami={payload}>
   <svg
     class="origami-svg"
-    viewBox="0 0 603 500"
-    width="603"
-    height="500"
+    viewBox="0 0 1440 1024"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     role="img"
     aria-label="Origami folding animation"
   >
-    {polys.map(([name, d]) => <path class="origami-poly" data-name={name} d={d} />)}
+    <!-- Contour — starts as shape A, morphs to B and back -->
+    <path class="origami-contour" d={shapeA.contour}></path>
+
+    <!-- Shape A inner fold lines -->
+    <g class="origami-inner origami-inner--a">
+      {shapeA.polygons.map((d) => <path class="origami-poly" d={d} />)}
+    </g>
+
+    <!-- Shape B inner fold lines (hidden until first morph) -->
+    <g class="origami-inner origami-inner--b">
+      {shapeB.polygons.map((d) => <path class="origami-poly" d={d} />)}
+    </g>
   </svg>
 </div>
 
@@ -37,73 +63,135 @@ const polys = [...orig1.entries()];
   import gsap from "gsap";
   import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
   import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
-  import { orig1 } from "./origami-data";
+  import type { OrigamiAnimConfig } from "./origami-data";
 
   gsap.registerPlugin(MorphSVGPlugin, DrawSVGPlugin);
 
-  type Pt = [number, number];
+  // ------------------------------------------------------------------
+  // Parse server-injected data (dataset auto-unescapes HTML entities)
+  // ------------------------------------------------------------------
+  const root = document.querySelector(".origami") as HTMLElement;
+  const raw = JSON.parse(root.dataset.origami ?? "{}");
+  const contourA: string = raw.contourA;
+  const contourB: string = raw.contourB;
+  const cfg: OrigamiAnimConfig = raw.config;
 
-  /** Pull every coordinate pair out of a path `d` string, in order. */
-  function parsePoints(d: string): Pt[] {
-    const nums = (d.match(/-?\d*\.?\d+(?:[eE][-+]?\d+)?/g) ?? []).map(Number);
-    const pts: Pt[] = [];
-    for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
-    return pts;
+  // ------------------------------------------------------------------
+  // DOM references
+  // ------------------------------------------------------------------
+  const svg = document.querySelector(".origami-svg") as SVGElement;
+  const contour = svg.querySelector(".origami-contour") as SVGPathElement;
+  const groupA = svg.querySelector(".origami-inner--a") as SVGGElement;
+  const groupB = svg.querySelector(".origami-inner--b") as SVGGElement;
+  const polysA = gsap.utils.toArray<SVGPathElement>(
+    groupA.querySelectorAll(".origami-poly"),
+  );
+  const polysB = gsap.utils.toArray<SVGPathElement>(
+    groupB.querySelectorAll(".origami-poly"),
+  );
+
+  // ------------------------------------------------------------------
+  // Helper: stagger-draw a set of polygon paths
+  // ------------------------------------------------------------------
+  function staggerDraw(
+    tl: gsap.core.Timeline,
+    paths: SVGPathElement[],
+    position?: gsap.Position,
+  ) {
+    tl.fromTo(
+      paths,
+      { drawSVG: "0 0" },
+      {
+        drawSVG: "0% 100%",
+        duration: cfg.drawDuration,
+        stagger: cfg.drawStagger,
+        ease: cfg.drawEase,
+      },
+      position,
+    );
   }
 
-  function initOrigami(svg: SVGSVGElement): void {
-    const paths = Array.from(svg.querySelectorAll<SVGPathElement>("path"));
-    const polys = [...orig1.values()].map(parsePoints);
-
-    // Global centroid of the figure (the fold converges here).
-    let sx = 0;
-    let sy = 0;
-    let n = 0;
-    for (const pts of polys) for (const [x, y] of pts) (sx += x), (sy += y), n++;
-    const cx = sx / n;
-    const cy = sy / n;
-
-    // Per-flap centroid + its radius from the global center. Outer flaps (larger
-    // radius) will fold first.
-    const radii = polys.map((pts) => {
-      const px = pts.reduce((s, p) => s + p[0], 0) / pts.length;
-      const py = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-      return Math.hypot(px - cx, py - cy);
-    });
-    const maxR = Math.max(...radii) || 1;
-
-    // Folded target: a single trapezoid at the center. Every flap morphs onto
-    // it, so they stack ("fold over itself") and the silhouette becomes a
-    // trapezoid. Replace these numbers with your real folded outline.
-    const tTop = cy - 110;
-    const tBot = cy + 110;
-    const trap = `M${cx - 95} ${tTop}L${cx + 95} ${tTop}L${cx + 150} ${tBot}L${cx - 150} ${tBot}Z`;
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    // Start invisible (strokes will draw on).
-    gsap.set(paths, { drawSVG: 0 });
-
-    const tl = gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 0.8 });
-
-    // 1) Draw the unfolded crease pattern on.
-    tl.to(paths, {
-      drawSVG: "100%",
-      duration: 0.8,
-      stagger: 0.05,
-      ease: "power1.inOut",
-    });
-
-    // 2) Fold each flap inward onto the central trapezoid. Larger radius =>
-    // smaller start time => outer flaps fold first, inner flaps last.
-    const drawEnd = 0.8 + 0.05 * (paths.length - 1);
-    paths.forEach((p, i) => {
-      const at = drawEnd + 0.3 + (1 - radii[i] / maxR) * 0.5;
-      tl.to(p, { morphSVG: trap, duration: 1.3, ease: "power2.inOut" }, at);
-    });
+  // ------------------------------------------------------------------
+  // Helper: reverse-draw then hide a group
+  // ------------------------------------------------------------------
+  function staggerHide(
+    tl: gsap.core.Timeline,
+    paths: SVGPathElement[],
+    group: SVGGElement,
+    position?: gsap.Position,
+  ) {
+    tl.to(
+      paths,
+      {
+        drawSVG: "0 0",
+        duration: cfg.drawDuration * 0.35,
+        stagger: { each: cfg.drawStagger * 0.4, from: "end" },
+        ease: "power2.in",
+      },
+      position,
+    );
+    tl.set(group, { visibility: "hidden" });
   }
 
-  document.querySelectorAll<SVGSVGElement>(".origami-svg").forEach(initOrigami);
+  // ------------------------------------------------------------------
+  // Build the animation
+  // ------------------------------------------------------------------
+  function run() {
+    const master = gsap.timeline({ defaults: { overwrite: "auto" } });
+
+    // -- Phase 0: set initial visibility ---------------------------------
+    master.set([contour, groupA], { visibility: "visible" });
+    master.set(groupB, { visibility: "hidden" });
+
+    // -- Phase 1: initial reveal of shape A ------------------------------
+    master.fromTo(
+      contour,
+      { drawSVG: "0 0" },
+      {
+        drawSVG: "0% 100%",
+        duration: cfg.drawDuration * 1.1,
+        ease: cfg.drawEase,
+      },
+    );
+    staggerDraw(master, polysA, `-=${cfg.drawDuration * 0.5}`);
+    master.to({}, { duration: cfg.pauseAfterDraw });
+
+    // -- Phase 2 → N: repeating A ↔ B loop ------------------------------
+    const loop = gsap.timeline({
+      repeat: -1,
+      repeatDelay: cfg.pauseBetweenCycles,
+    });
+
+    // A → B
+    staggerHide(loop, polysA, groupA);
+    loop.to(contour, {
+      morphSVG: { shape: contourB },
+      duration: cfg.morphDuration,
+      ease: cfg.morphEase,
+    });
+    loop.set(groupB, { visibility: "visible" });
+    staggerDraw(loop, polysB);
+    loop.to({}, { duration: cfg.pauseAfterDraw });
+
+    // B → A
+    staggerHide(loop, polysB, groupB);
+    loop.to(contour, {
+      morphSVG: { shape: contourA },
+      duration: cfg.morphDuration,
+      ease: cfg.morphEase,
+    });
+    loop.set(groupA, { visibility: "visible" });
+    staggerDraw(loop, polysA);
+    loop.to({}, { duration: cfg.pauseAfterDraw });
+
+    master.add(loop);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else {
+    run();
+  }
 </script>
 
 <style>
@@ -115,9 +203,26 @@ const polys = [...orig1.entries()];
   }
 
   .origami-svg {
-    width: min(90vw, 600px);
+    /* Responsive: fill available width up to native artwork size,
+       then shrink with the viewport.  height:auto preserves
+       the 1440×1024 aspect ratio from viewBox. */
+    width: min(100%, 1440px);
     height: auto;
     overflow: visible;
+  }
+
+  /* Everything hidden until GSAP takes over */
+  .origami-contour,
+  .origami-inner {
+    visibility: hidden;
+  }
+
+  .origami-contour {
+    fill: none;
+    stroke: #111;
+    stroke-width: 3;
+    stroke-linecap: square;
+    stroke-linejoin: round;
   }
 
   .origami-poly {
