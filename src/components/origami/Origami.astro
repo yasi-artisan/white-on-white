@@ -54,6 +54,8 @@ const { id } = Astro.props;
     width: 100%;
     display: grid;
     place-items: center;
+
+    --_fill: light-dark(var(--gray-8), var(--gray-2));
   }
 
   .origami-stage {
@@ -100,7 +102,7 @@ const { id } = Astro.props;
 
   .origami-contour {
     fill: transparent;
-    stroke: #111;
+    stroke: var(--_fill);
     stroke-width: 4;
     stroke-linecap: square;
     stroke-linejoin: round;
@@ -110,7 +112,7 @@ const { id } = Astro.props;
 
   .origami-poly {
     fill: none;
-    stroke: #111;
+    stroke: var(--_fill);
     stroke-width: 2;
     stroke-linecap: square;
     stroke-linejoin: round;

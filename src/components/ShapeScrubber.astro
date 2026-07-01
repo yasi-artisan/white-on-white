@@ -45,18 +45,46 @@ const max = sections.length - 1;
 </div>
 
 <style>
+  @property --_opacity {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+
+  @property --_rail-color {
+    syntax: "<color>";
+    inherits: true;
+    initial-value: gray;
+  }
+
+  @property --flip {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 1;
+  }
+
   .scrubber {
+    --_rail-color: light-dark(var(--gray-2), var(--gray-8));
+    --_opacity: 0;
+
     padding-block: 2em;
     margin-block: var(--size-px-5);
-
+    opacity: var(--_opacity, 0);
     position: relative;
     width: min(100%, 24rem);
     height: 16px;
     display: grid;
     place-items: center;
-    --_rail-color: light-dark(var(--gray-2), var(--gray-9));
+    transition:
+      --_opacity 0.2s ease,
+      --_rail-color 0.2s ease;
+    background: light-dark(var(--gray-0), var(--gray-10));
+    backdrop-filter: blur(4px);
+    border-radius: var(--radius-1);
+    z-index: 5;
 
     &:hover {
+      --_opacity: 0.9;
       --_rail-color: light-dark(var(--gray-8), var(--gray-5));
     }
   }
@@ -80,7 +108,7 @@ const max = sections.length - 1;
     --flip: 1;
     transform: translate(-50%, 0) scaleX(var(--flip));
     transform-origin: center;
-    transition: transform 0.4s ease;
+    transition: --flip 0.4s ease;
     pointer-events: none;
     color: var(--_rail-color);
 

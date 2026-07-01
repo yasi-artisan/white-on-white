@@ -1,4 +1,6 @@
 ---
+import Footer from "@/components/footer.astro";
+
 import { Font } from "astro:assets";
 import "@/assets/global.css";
 import { getEntry } from "astro:content";
@@ -23,9 +25,9 @@ const menuLinks = settings?.data?.menuLinks ?? [];
   <body>
     <aside class="rail" aria-label="Site navigation">
       {/* Persistent vertical wordmark — the idle indicator and a home link. */}
-      <a class="rail__mark" href="/" aria-label={`${siteName} — home`}>
+      <!-- <a class="rail__mark" href="/" aria-label={`${siteName} — home`}>
         {siteName}
-      </a>
+      </a> -->
       {
         menuLinks.length > 0 && (
           <nav class="menu" aria-label="Main">
@@ -44,17 +46,18 @@ const menuLinks = settings?.data?.menuLinks ?? [];
     </aside>
     <main>
       <slot />
-      <footer>
-        <p>
-          Made with ❤️ by
-          <a href="https://astro.build" target="_blank" rel="noopener">Astro</a>
-        </p>
-      </footer>
+      <Footer title={siteName} />
     </main>
   </body>
 </html>
 
 <style>
+  @property --_sheet {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 2rem;
+  }
+
   body {
     overflow: hidden;
     /* Collapsed rail by default; widens on hover/focus-within. */
@@ -62,7 +65,7 @@ const menuLinks = settings?.data?.menuLinks ?? [];
     display: grid;
     grid-template-columns: var(--_sheet) 1fr;
     grid-template-rows: 1fr;
-    transition: grid-template-columns 0.28s ease;
+    transition: --_sheet 0.28s ease;
 
     a {
       color: light-dark(var(--gray-9), var(--gray-3));
@@ -74,6 +77,8 @@ const menuLinks = settings?.data?.menuLinks ?? [];
     --_sheet: min(30ch, 80vw);
   }
 
+
+
   .rail {
     display: flex;
     align-items: stretch;
@@ -81,7 +86,24 @@ const menuLinks = settings?.data?.menuLinks ?? [];
     padding-inline: var(--size-2);
     border-right: 1px solid var(--border-color);
     overflow: hidden;
+    position: relative;
+  
+    &::after, &::before {
+      content: "";
+      position: absolute;
+      height: 100%;
+    }
+    &::after {
+          border-right: 1px solid var(--border-color);
+          right: 2px;
+    }
+    &::before {
+          border-left: 1px solid var(--border-color);
+          right: 5px;
+    }
+
   }
+
 
   .rail__mark {
     flex: 0 0 auto;

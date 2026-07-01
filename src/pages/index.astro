@@ -147,12 +147,30 @@ const sections = [
   .content {
     --_width: max(380px, 40dvw);
     max-width: var(--_width);
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    /* flex-direction: column; */
+    /* justify-content: center; */
+    /* align-items: center; */
+    place-content: center;
     justify-content: center;
-    align-items: center;
+    place-items: center;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas:
+      "origami"
+      "heading";
     gap: var(--size-5);
     height: 100%;
     width: 100%;
+
+    #section-heading {
+      grid-area: heading;
+    }
+    #shape-shifter {
+      grid-area: origami;
+    }
+    #shape-scrubber {
+      grid-area: origami;
+    }
   }
 </style>

@@ -1,0 +1,70 @@
+---
+
+interface Props {
+  title: string;
+}
+
+type FooterLinks = {
+  label: string;
+  url: string;
+}[];
+
+
+const { title }: Props = Astro.props;
+---
+
+<footer class="footer">
+  <p class="site-title">{title}</p>
+  <p class="acknowledgment">
+    Made with ❤️ by Kaveh Rafie
+    <!-- <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> -->
+  </p>
+  <div class="footer-links">
+    { 
+      ["GitHub", "LinkedIn", "Twitter"].map((label) => {
+        const url = `https://${label.toLowerCase()}.com/kavehrafie`;
+        return (
+          <a class="footer-link" href={url} target="_blank" rel="noopener">
+            {label} 
+          </a>
+        );
+      })
+    }
+    {/* <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> */}
+  </div>
+</footer>
+
+<style lang="postcss">
+  .footer {
+    padding-block: var(--size-relative-6);
+   
+    display: grid;
+    width: 100%;
+    padding-inline: var(--size-relative-12);
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "title acknowledgment"
+      "links links";
+  }
+.acknowledgment {
+  padding-block: var(--size-relative-4);
+  grid-area: acknowledgment;
+  font-size: calc(var(--size-3) * 0.875);
+}
+.site-title {
+  grid-area: title;
+  font-size: var(--size-3);
+  color: light-dark(var(--gray-8), var(--gray-6));
+}
+.footer-links {
+  
+  padding-block: var(--size-relative-4);
+  border-top: 1px solid light-dark(var(--gray-2), var(--gray-8));
+  grid-area: links;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  gap: var(--size-3);
+}
+</style>
