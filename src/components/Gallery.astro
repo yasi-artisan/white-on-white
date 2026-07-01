@@ -1,22 +1,30 @@
 ---
 interface Props {
   images: string[];
+  /** Page path used to build per-image routes, e.g. "/test" → /image/test/0. */
+  pagePath: string;
   /** Base alt text; each image is numbered off of it (e.g. "Installations 3"). */
   alt?: string;
 }
-const { images, alt = "Gallery image" } = Astro.props;
+const { images, pagePath, alt = "Gallery image" } = Astro.props;
+const base = pagePath.replace(/^\/+/, "");
 ---
 
 <div class="mosaic">
   {
     images.map((src, i) => (
-      <a class="mosaic__tile" href={src} target="_blank" rel="noopener noreferrer">
+      <a
+        class="mosaic__tile"
+        href={`/image/${base}/${i}`}
+        aria-label={`${alt} ${i + 1}`}
+      >
         <img
           class="mosaic__img"
           src={src}
           alt={`${alt} ${i + 1}`}
           loading="lazy"
           decoding="async"
+          style={`view-transition-name: gallery-${i}`}
         />
       </a>
     ))
@@ -26,19 +34,22 @@ const { images, alt = "Gallery image" } = Astro.props;
 <style>
   .mosaic {
     margin: 0;
-    /* Responsive masonry: fit as many columns as possible at ≥16rem, cap at 4. */
-    columns: 4 16rem;
+    /* Masonry, capped at 3 columns so tiles stay generous (not too wide/dense). */
+    columns: 3 14rem;
     column-gap: var(--size-3);
   }
 
   .mosaic__tile {
     display: block;
-    break-inside: avoid;
+    width: 100%;
     margin: 0 0 var(--size-3);
+    padding: 0;
+    border: 0;
+    background: none;
+    break-inside: avoid;
     overflow: hidden;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-2);
-    background: light-dark(var(--gray-1), var(--gray-8));
+    border-radius: var(--radius-1);
+    cursor: zoom-in;
   }
 
   .mosaic__img {
@@ -50,7 +61,7 @@ const { images, alt = "Gallery image" } = Astro.props;
 
   .mosaic__tile:hover .mosaic__img,
   .mosaic__tile:focus-visible .mosaic__img {
-    transform: scale(1.04);
+    transform: scale(1.03);
   }
 
   .mosaic__tile:focus-visible {

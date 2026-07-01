@@ -25,8 +25,9 @@ collections:
     extension: mdx
     fields:
       - { label: Title, name: title, widget: string }
+      - { label: Subtitle, name: subtitle, widget: richtext, required: false, buttons: [bold, italic], modes: [rich_text], editor_components:[] }
       - { label: Draft, name: draft, widget: boolean, default: true }
-      - { label: Body, name: body, widget: richtext }
+      - { label: Body, name: body, widget: richtext, required: false, buttons: [bold, italic, link], modes: [rich_text], editor_components:[] }
       - { label: Path, name: path, widget: string }
       - {
           label: Cover Image,

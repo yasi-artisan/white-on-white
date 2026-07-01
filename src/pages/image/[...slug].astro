@@ -1,0 +1,103 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '@/layouts/Layout.astro';
+
+// One route per gallery image across all published pages:
+//   /image/<page-path>/<index>   e.g. /image/test/0
+// `view-transition-name: gallery-<index>` matches the thumbnail on the gallery
+// page, so the navigation morphs the tile into this image (and back).
+export async function getStaticPaths() {
+  const pages = await getCollection(
+    'pages',
+    (p) => !p.data.draft && (p.data.gallery?.length ?? 0) > 0,
+  );
+
+  const routes: {
+    params: { slug: string };
+    props: { src: string; alt: string; back: string; index: number };
+  }[] = [];
+
+  for (const page of pages) {
+    const base = page.data.path.replace(/^\/+/, '');
+    const images = page.data.gallery ?? [];
+    images.forEach((src, i) => {
+      routes.push({
+        params: { slug: `${base}/${i}` },
+        props: {
+          src,
+          alt: `${page.data.title} ${i + 1}`,
+          back: page.data.path,
+          index: i,
+        },
+      });
+    });
+  }
+
+  return routes;
+}
+
+interface Props {
+  src: string;
+  alt: string;
+  back: string;
+  index: number;
+}
+
+const { src, alt, back, index } = Astro.props;
+---
+
+<Layout>
+  <article class="image-view">
+    <a class="image-view__back" href={back}>← Back</a>
+
+    <a class="image-view__stage" href={back} aria-label="Close image">
+      <img
+        class="image-view__img"
+        src={src}
+        alt={alt}
+        style={`view-transition-name: gallery-${index}`}
+      />
+    </a>
+  </article>
+</Layout>
+
+<script>
+  // Escape returns to the gallery; the reverse morph plays automatically.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape") history.back();
+  });
+</script>
+
+<style>
+  .image-view {
+    width: 100%;
+    max-width: 60rem;
+    margin-inline: auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--size-4);
+    padding: var(--size-5);
+  }
+
+  .image-view__back {
+    align-self: flex-start;
+    text-decoration: none;
+    font-family: var(--font-body);
+    color: light-dark(var(--gray-9), var(--gray-3));
+  }
+
+  .image-view__stage {
+    display: block;
+    line-height: 0;
+  }
+
+  .image-view__img {
+    max-width: 100%;
+    max-height: 80dvh;
+    object-fit: contain;
+    border-radius: var(--radius-2);
+  }
+</style>

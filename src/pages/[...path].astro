@@ -24,11 +24,10 @@ const gallery = page.data.gallery ?? [];
 
 <Layout>
   <article class="page">
-    <header class="page__header">
-      <h1 class="page__title">{page.data.title}</h1>
-    </header>
+    <span>{page.data.subtitle}</span>
+    <h1 class="page__title">{page.data.title}</h1>
 
-    {gallery.length > 0 && <Gallery images={gallery} alt={page.data.title} />}
+    {gallery.length > 0 && <Gallery images={gallery} pagePath={page.data.path} alt={page.data.title} />}
 
     <div class="page__body">
       <Content />
@@ -38,22 +37,31 @@ const gallery = page.data.gallery ?? [];
 
 <style>
   .page {
+    padding-block-start: var(--size-relative-12);
     width: 100%;
-    max-width: 80rem;
-    padding-inline: var(--size-5);
+    max-width: 64rem;
+    margin-inline: auto;
     display: flex;
     flex-direction: column;
     gap: var(--size-6);
+    align-items: center;
   }
 
   .page__title {
     margin: 0;
+    text-align: center;
+    /* uppercase; */
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 0.2em;
+    padding-block: var(--size-4);
     font-family: var(--font-heading);
     font-size: var(--font-size-7);
   }
 
   .page__body {
-    max-width: 48rem;
+    max-width: 42rem;
+    margin-inline: auto;
     font-family: var(--font-body);
   }
 </style>
