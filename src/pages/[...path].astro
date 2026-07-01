@@ -3,6 +3,7 @@ import { getCollection, render } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
 import Layout from '@/layouts/Layout.astro';
 import Gallery from '@/components/Gallery.astro';
+import { inlineMarkdown } from '@/utils/markdown';
 
 export async function getStaticPaths() {
   const pages = await getCollection('pages', (page) => !page.data.draft);
@@ -20,11 +21,12 @@ interface Props {
 const { page }: Props = Astro.props;
 const { Content } = await render(page);
 const gallery = page.data.gallery ?? [];
+const subtitleHtml = inlineMarkdown(page.data.subtitle);
 ---
 
 <Layout>
   <article class="page">
-    <span>{page.data.subtitle}</span>
+    {subtitleHtml && <span class="page__subtitle" set:html={subtitleHtml} />}
     <h1 class="page__title">{page.data.title}</h1>
 
     {gallery.length > 0 && <Gallery images={gallery} pagePath={page.data.path} alt={page.data.title} />}
@@ -57,6 +59,13 @@ const gallery = page.data.gallery ?? [];
     padding-block: var(--size-4);
     font-family: var(--font-heading);
     font-size: var(--font-size-7);
+  }
+
+  .page__subtitle {
+    margin: 0;
+    text-align: center;
+    font-family: var(--font-body);
+    font-size: var(--font-size-4);
   }
 
   .page__body {
