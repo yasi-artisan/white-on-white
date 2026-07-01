@@ -5,9 +5,73 @@ import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout>
-  <Origami config={{ pauseAfterDraw: 2.5, morphDuration: 2.5 }} />
-
-  <ShapeNav
-    labels={["Community Projects", "Installations", "Papermaking/Printmaking"]}
-  />
+  <section class="content">
+    <Origami id="shape-shifter" />
+    <aside>
+      <ShapeNav
+        id="shape-controls"
+        labels={[
+          "Community Projects",
+          "Installations",
+          "Papermaking/Printmaking",
+          "Painting",
+          "About",
+        ]}
+      />
+    </aside>
+  </section>
 </Layout>
+
+<script>
+  import { OrigamiAnimation } from "../components/origami/origami-animation";
+  import { shapes, defaultConfig } from "../components/origami/origami-data";
+
+  // One instance, owned here, driving both the stage and the nav.
+  const anim = new OrigamiAnimation(
+    document.querySelector("#shape-shifter")!,
+    shapes.map((s) => s.contour),
+    { ...defaultConfig, pauseAfterDraw: 2.5, morphDuration: 2.5 },
+  );
+  anim.startLoop();
+
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>(
+      "#shape-controls .shape-nav-btn",
+    ),
+  );
+
+  const sync = () => {
+    const busy = anim.isTransitioning;
+    for (const btn of buttons) {
+      const active = Number(btn.dataset.shapeIndex) === anim.currentShape;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-pressed", String(active));
+      btn.disabled = busy;
+    }
+  };
+
+  for (const btn of buttons) {
+    btn.addEventListener("click", () =>
+      anim.goTo(Number(btn.dataset.shapeIndex)),
+    );
+  }
+
+  anim.onChange(sync);
+</script>
+
+<style lang="postcss">
+
+  .content {
+    --_width: max(380px, 60dvw);
+    max-width: var(--_width);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+  }
+
+  aside {
+    
+  }
+</style>

@@ -1,23 +1,45 @@
+---
+import { Font } from "astro:assets";
+import "@/assets/global.css";
+---
+
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro Basics</title>
-	</head>
-	<body>
-		<slot />
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <Font cssVariable="--font-satoshi" />
+    <Font cssVariable="--font-display" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Astro Basics</title>
+  </head>
+  <body>
+    <slot />
+    <footer>
+      <p>
+        Made with ❤️ by
+        <a href="https://astro.build" target="_blank" rel="noopener">Astro</a>
+      </p>
+    </footer>
+  </body>
 </html>
 
-<style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
+<style lang="postcss">
+  
+  html,
+  body {
+    --_section-gap: 2em;
+
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--_section-gap);
+    justify-content: center;
+    align-items: center;
+
+  }
 </style>

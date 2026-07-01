@@ -1,43 +1,16 @@
 ---
-//
-// Origami.astro — config-driven origami animation
-//
-// Timeline:
-//   1. Draw contour of shape A (3px)
-//   2. Stagger-draw inner fold lines of shape A (2px)
-//   3. Pause (configurable)
-//   4. Reverse-draw inner lines of A, hide them
-//   5. Morph contour from shape A → shape B
-//   6. Stagger-draw inner fold lines of shape B
-//   7. Pause
-//   8. Reverse-draw inner lines of B, hide them
-//   9. Morph contour B → A … loop
-//
-// All timing is controlled via OrigamiAnimConfig (see ./origami-data.ts).
-import { shapes, defaultConfig, type OrigamiAnimConfig } from "./origami-data";
+// Presentational stage for the origami wireframe animation.
+// The animation instance is created and driven by the page (see pages/index.astro).
+import { shapes } from "./origami-data";
 
-export interface Props {
-  /** Partial overrides for the default animation config. */
-  config?: Partial<OrigamiAnimConfig>;
-  /** Lock the display to a specific shape (0-based index into shapes[]).
-   *  When set the loop is paused; use `origami:goto` events to switch. */
-  activeShape?: number;
+interface Props {
+  id: string;
 }
 
-const { config: userConfig = {}, activeShape } = Astro.props;
-const cfg: OrigamiAnimConfig = { ...defaultConfig, ...userConfig };
-
-// Build client payload: contours for morph targets + per-shape metadata
-const payload = JSON.stringify({
-  contours: shapes.map((s) => s.contour),
-  labels: shapes.map((s) => s.label),
-  hoverImages: shapes.map((s) => s.hoverImage ?? null),
-  config: cfg,
-  activeShape: activeShape ?? null,
-});
+const { id } = Astro.props;
 ---
 
-<div class="origami" data-origami={payload}>
+<div class="origami" {id}>
   <div class="origami-stage">
     {
       shapes.map((shape, i) =>
@@ -61,9 +34,7 @@ const payload = JSON.stringify({
       role="img"
       aria-label="Origami folding animation"
     >
-      <!-- Contour — starts as first shape, morphs to others -->
       <path class="origami-contour" d={shapes[0].contour}></path>
-
       {
         shapes.map((shape, i) => (
           <g class={`origami-inner origami-inner--${i}`}>
@@ -77,60 +48,17 @@ const payload = JSON.stringify({
   </div>
 </div>
 
-<script>
-  import { OrigamiAnimation } from "./origami-animation";
-  import type { OrigamiAnimConfig } from "./origami-data";
-
-  // ------------------------------------------------------------------
-  // Parse server-injected data (dataset auto-unescapes HTML entities)
-  // ------------------------------------------------------------------
-  const root = document.querySelector(".origami") as HTMLElement;
-  const raw = JSON.parse(root.dataset.origami ?? "{}");
-  const contours: string[] = raw.contours;
-  const cfg: OrigamiAnimConfig = raw.config;
-  const initialActive: number | null = raw.activeShape;
-
-  // ------------------------------------------------------------------
-  // Instantiate the animation class — it owns all state & timeline
-  // ------------------------------------------------------------------
-  const anim = new OrigamiAnimation(root, contours, cfg);
-
-  // Expose on the DOM element and globally so external code can hook in
-  (root as any).__origami = anim;
-  (window as any).__origami = anim;
-
-  // ------------------------------------------------------------------
-  // Start
-  // ------------------------------------------------------------------
-  function run() {
-    if (initialActive !== null) {
-      anim.startPaused(initialActive);
-    } else {
-      anim.startLoop();
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", run);
-  } else {
-    run();
-  }
-</script>
-
 <style>
   .origami {
     height: 100%;
     width: 100%;
     display: grid;
     place-items: center;
-    background: #fff;
   }
 
-  /* Wrapper keeps the SVG and hover images in the same coordinate space */
   .origami-stage {
     position: relative;
     width: 100%;
-    /* width: min(100%, 1440px); */
   }
 
   .origami-svg {
@@ -144,7 +72,6 @@ const payload = JSON.stringify({
     pointer-events: none;
   }
 
-  /* ---- hover companion images ---- */
   .origami-hover-img {
     position: absolute;
     inset: 0;
@@ -157,7 +84,6 @@ const payload = JSON.stringify({
     z-index: 0;
   }
 
-  /* Hover only when settled AND cursor is over a path stroke */
   .origami-stage.is-hovering:not(.is-transitioning)
     .origami-hover-img.is-active {
     opacity: 1;
@@ -167,7 +93,6 @@ const payload = JSON.stringify({
     opacity: 0;
   }
 
-  /* ---- wireframe paths ---- */
   .origami-contour,
   .origami-inner {
     visibility: hidden;
@@ -176,7 +101,7 @@ const payload = JSON.stringify({
   .origami-contour {
     fill: transparent;
     stroke: #111;
-    stroke-width: 3;
+    stroke-width: 4;
     stroke-linecap: square;
     stroke-linejoin: round;
     pointer-events: fill;

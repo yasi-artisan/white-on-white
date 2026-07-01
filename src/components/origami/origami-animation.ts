@@ -101,8 +101,6 @@ export class OrigamiAnimation {
 
     // Capture the *current* shape before we change it
     const from = this.#currentShape;
-    const fromGroup = this.#innerGroups[from];
-    const fromPolys = this.#innerPolys[from];
 
     this.#killTimelines();
     this.#paused = true;
@@ -111,9 +109,6 @@ export class OrigamiAnimation {
     this.#isTransitioning = true;
     this.#stage.classList.add("is-transitioning");
     this.#setShape(target);
-
-    const toGroup = this.#innerGroups[target];
-    const toPolys = this.#innerPolys[target];
 
     const tl = gsap.timeline({
       defaults: { overwrite: "auto" },
@@ -125,20 +120,8 @@ export class OrigamiAnimation {
     });
 
     tl.set(this.#contour, { visibility: "visible" });
-    this.#staggerHide(tl, fromPolys, fromGroup);
-
-    tl.to(
-      this.#contour,
-      {
-        morphSVG: { shape: this.contours[target] },
-        duration: this.cfg.morphDuration,
-        ease: this.cfg.morphEase,
-      },
-      "-=0.2",
-    );
-
-    tl.set(toGroup, { visibility: "visible" });
-    this.#staggerDraw(tl, toPolys);
+    // Morph overlaps the hide by 0.2s; active shape already updated above
+    this.#transition(tl, from, target, { morphOffset: "-=0.2" });
   }
 
   // -- lifecycle called by Origami.astro's inline boot script -----------
@@ -148,30 +131,12 @@ export class OrigamiAnimation {
     const mtl = gsap.timeline({ defaults: { overwrite: "auto" } });
     this.#masterTl = mtl;
 
-    // Phase 0: initial visibility
-    mtl.set(this.#contour, { visibility: "visible" });
-    this.#innerGroups.forEach((g, i) => {
-      mtl.set(g, { visibility: i === 0 ? "visible" : "hidden" });
-    });
-
-    // Phase 1: initial reveal of first shape
-    mtl.fromTo(
-      this.#contour,
-      { drawSVG: "0 0" },
-      {
-        drawSVG: "0% 100%",
-        duration: this.cfg.drawDuration * 1.1,
-        ease: this.cfg.drawEase,
-      },
-    );
-    this.#staggerDraw(
-      mtl,
-      this.#innerPolys[0],
-      `-=${this.cfg.drawDuration * 0.5}`,
-    );
+    // Phase 1: reveal the first shape, then pause
+    this.#showOnly(mtl, 0);
+    this.#revealShape(mtl, 0);
     mtl.to({}, { duration: this.cfg.pauseAfterDraw });
 
-    // Phase 2 → N: repeating loop
+    // Phase 2: repeating morph loop
     this.#loopTl = gsap.timeline({
       repeat: -1,
       repeatDelay: this.cfg.pauseBetweenCycles,
@@ -184,24 +149,10 @@ export class OrigamiAnimation {
 
       // Block hover during the morph+draw segment
       this.#loopTl.call(() => this.#stage.classList.add("is-transitioning"));
-
-      this.#staggerHide(
-        this.#loopTl,
-        this.#innerPolys[from],
-        this.#innerGroups[from],
-      );
-      this.#loopTl.to(this.#contour, {
-        morphSVG: { shape: this.contours[to] },
-        duration: this.cfg.morphDuration,
-        ease: this.cfg.morphEase,
+      // Advance active shape mid-step (after morph, before folds draw)
+      this.#transition(this.#loopTl, from, to, {
+        onMorphed: () => this.#setShape(to),
       });
-
-      // Fire shape change right after morph, before inner polys draw
-      this.#loopTl.call(() => this.#setShape(to));
-
-      this.#loopTl.set(this.#innerGroups[to], { visibility: "visible" });
-      this.#staggerDraw(this.#loopTl, this.#innerPolys[to]);
-
       // Re-enable hover once drawing is complete
       this.#loopTl.call(() => this.#stage.classList.remove("is-transitioning"));
 
@@ -216,25 +167,8 @@ export class OrigamiAnimation {
     const tl = gsap.timeline({ defaults: { overwrite: "auto" } });
     this.#masterTl = tl;
 
-    tl.set(this.#contour, { visibility: "visible" });
-    this.#innerGroups.forEach((g, i) => {
-      tl.set(g, { visibility: i === target ? "visible" : "hidden" });
-    });
-
-    tl.fromTo(
-      this.#contour,
-      { drawSVG: "0 0" },
-      {
-        drawSVG: "0% 100%",
-        duration: this.cfg.drawDuration * 1.1,
-        ease: this.cfg.drawEase,
-      },
-    );
-    this.#staggerDraw(
-      tl,
-      this.#innerPolys[target],
-      `-=${this.cfg.drawDuration * 0.5}`,
-    );
+    this.#showOnly(tl, target);
+    this.#revealShape(tl, target);
 
     // Fire at the very end since the entire draw is one reveal
     tl.call(() => this.#setShape(target));
@@ -283,6 +217,63 @@ export class OrigamiAnimation {
     this.#loopTl = null;
     this.#masterTl?.kill();
     this.#masterTl = null;
+  }
+
+  /**
+   * Show only `shape`'s contour + inner group, hiding every other inner
+   * group. Used to set up an initial reveal.
+   */
+  #showOnly(tl: gsap.core.Timeline, shape: number): void {
+    tl.set(this.#contour, { visibility: "visible" });
+    this.#innerGroups.forEach((g, i) => {
+      tl.set(g, { visibility: i === shape ? "visible" : "hidden" });
+    });
+  }
+
+  /** Draw `shape`'s contour from scratch, then stagger-draw its inner folds. */
+  #revealShape(tl: gsap.core.Timeline, shape: number): void {
+    tl.fromTo(
+      this.#contour,
+      { drawSVG: "0 0" },
+      {
+        drawSVG: "0% 100%",
+        duration: this.cfg.drawDuration * 1.1,
+        ease: this.cfg.drawEase,
+      },
+    );
+    this.#staggerDraw(
+      tl,
+      this.#innerPolys[shape],
+      `-=${this.cfg.drawDuration * 0.5}`,
+    );
+  }
+
+  /**
+   * One shape → shape step: hide `from`'s folds, morph the contour to `to`,
+   * then reveal `to`'s folds. This single sequence powers both the auto-loop
+   * and `goTo()`. `morphOffset` overlaps the morph with the preceding hide
+   * (used by `goTo`); `onMorphed` fires after the morph, before the `to`
+   * folds draw (used by the loop to advance the active shape mid-step).
+   */
+  #transition(
+    tl: gsap.core.Timeline,
+    from: number,
+    to: number,
+    opts: { morphOffset?: gsap.Position; onMorphed?: () => void } = {},
+  ): void {
+    this.#staggerHide(tl, this.#innerPolys[from], this.#innerGroups[from]);
+    tl.to(
+      this.#contour,
+      {
+        morphSVG: { shape: this.contours[to] },
+        duration: this.cfg.morphDuration,
+        ease: this.cfg.morphEase,
+      },
+      opts.morphOffset,
+    );
+    if (opts.onMorphed) tl.call(opts.onMorphed);
+    tl.set(this.#innerGroups[to], { visibility: "visible" });
+    this.#staggerDraw(tl, this.#innerPolys[to]);
   }
 
   #staggerDraw(

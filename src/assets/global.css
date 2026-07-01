@@ -1,0 +1,8 @@
+@layer base, component, utility;
+
+@import "open-props/normalize";
+
+:root {
+  --font-heading: var(--font-display);
+  --font-body: var(--font-satoshi);
+}

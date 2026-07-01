@@ -4,6 +4,8 @@
 import osterichImg from "@/assets/origami/osterich.png";
 import carmolekImg from "@/assets/origami/carmolek.png";
 import squirrelImg from "@/assets/origami/squirrel.png";
+import pigeonImg from "@/assets/origami/pigeon.png";
+import rabbitImg from "@/assets/origami/rabbit.png";
 
 export interface OrigamiAnimConfig {
   /** Stroke width for contour outlines, px */
@@ -88,8 +90,35 @@ const squirrel: OrigamiItem = {
   ],
 };
 
+const pigeon: OrigamiItem = {
+  label: "Pigeon",
+  hoverImage: pigeonImg.src,
+  contour:
+    "M675.5 979.5L213 552.5L225 542H663V174V154L1082 139L1103 533L1088 549L1095 561L675.5 979.5Z",
+  polygons: [
+    "M871 342L662 542L453 776M662 542L884 758M662 542L1090 548M884 758L676 979M662 174L871 342L1090 548L884 758M1105 533L662 174L899 314L1082 139",
+  ],
+};
+
+const rabbit: OrigamiItem = {
+  label: "Rabbit",
+  hoverImage: rabbitImg.src,
+  contour:
+    "M1150 117L826 492L452 195L427 213V223L124 566L504 863H530H881L1216 822L1170 117H1150Z",
+  polygons: [
+    "M123 569L810 585L1219 823M810 585L524 863M810 585L879 863",
+    "M471 530L826 493L1216 807L1174 458M826 493L841 604M826 493L749 584M471 530L122 569M471 530L427 223M471 530L479 584M1174 458L1149 118M1174 458L841 474",
+  ],
+};
+
 /** All shapes in animation order. */
-export const shapes: OrigamiItem[] = [ostrich, carmolek, squirrel];
+export const shapes: OrigamiItem[] = [
+  ostrich,
+  carmolek,
+  squirrel,
+  pigeon,
+  rabbit,
+];
 
 /** Convenience named exports for direct access. */
-export { ostrich, carmolek, squirrel };
+export { ostrich, carmolek, squirrel, pigeon, rabbit };
