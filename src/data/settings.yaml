@@ -1,0 +1,6 @@
+siteName: Yasaman Moussavi
+menuLinks:
+  - label: About
+    url: /about
+  - label: Installation
+    url: /installation

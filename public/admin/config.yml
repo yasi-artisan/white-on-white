@@ -21,7 +21,7 @@ collections:
   - name: pages
     label: Pages
     label_singular: Post
-    folder: /src/content/pages
+    folder: /src/data/pages
     create: true
     fields:
       - { label: Title, name: title, widget: string }
@@ -37,10 +37,10 @@ collections:
 singletons:
   - name: settings
     label: Site Settings
-    file: content/settings.yaml
+    file: /src/data/settings.yaml
     fields:
-      - { label: Site Name, name: site_name }
-      - name: menu-links
+      - { label: Site Name, name: siteName }
+      - name: menuLinks
         label: Menu Links
         widget: list
         fields:

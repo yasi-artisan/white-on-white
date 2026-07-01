@@ -1,6 +1,11 @@
 ---
 import { Font } from "astro:assets";
 import "@/assets/global.css";
+import { getEntry } from "astro:content";
+
+const settings = await getEntry("settings", "settings");
+const siteName = settings?.data?.siteName ?? "Yasaman Moussavi";
+const menuLinks = settings?.data?.menuLinks ?? [];
 ---
 
 <!doctype html>
@@ -13,10 +18,30 @@ import "@/assets/global.css";
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
     <meta name="generator" content={Astro.generator} />
-    <title>Astro Basics</title>
+    <title>{siteName}</title>
   </head>
   <body>
-    <aside></aside>
+    <aside class="rail" aria-label="Site navigation">
+      {/* Persistent vertical wordmark — the idle indicator and a home link. */}
+      <a class="rail__mark" href="/" aria-label={`${siteName} — home`}>
+        {siteName}
+      </a>
+      {
+        menuLinks.length > 0 && (
+          <nav class="menu" aria-label="Main">
+            <ul class="menu__list">
+              {menuLinks.map((link) => (
+                <li>
+                  <a class="menu__link" href={link.url}>
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )
+      }
+    </aside>
     <main>
       <slot />
       <footer>
@@ -32,25 +57,103 @@ import "@/assets/global.css";
 <style>
   body {
     overflow: hidden;
-    --_sheet-width: var(--size-12);
+    /* Collapsed rail by default; widens on hover/focus-within. */
+    --_sheet: var(--size-7);
     display: grid;
-    grid-template-columns: var(--_sheet-width) 1fr;
+    grid-template-columns: var(--_sheet) 1fr;
     grid-template-rows: 1fr;
-    transition: grid 0.2s;
+    transition: grid-template-columns 0.28s ease;
+
+    a {
+      color: light-dark(var(--gray-9), var(--gray-3));
+    }
   }
-  body:has(aside:hover) {
-    --_sheet-width: var(--size-header-2);
+
+  /* Reveal on hover (mouse) and focus-within (keyboard + touch AT). */
+  body:has(.rail:hover, .rail:focus-within) {
+    --_sheet: min(30ch, 80vw);
   }
-  aside {
+
+  .rail {
+    display: flex;
+    align-items: stretch;
+    gap: var(--size-3);
+    padding-inline: var(--size-2);
     border-right: 1px solid var(--border-color);
-    cursor: pointer;
-    transition:
-      background-color 0.2s,
-      grid 0.2s;
+    overflow: hidden;
   }
+
+  .rail__mark {
+    flex: 0 0 auto;
+    align-self: center;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    color: var(--gray-6);
+    font-family: var(--font-heading);
+    font-size: var(--font-size-0);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .rail__mark:hover,
+  .rail__mark:focus-visible {
+    color: light-dark(var(--gray-9), var(--gray-3));
+  }
+
+  .menu {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-self: center;
+    /* Hidden until the rail opens: clipped by overflow, non-interactive,
+       and faded out — but still in the a11y tree and tab order. */
+    opacity: 0;
+    transform: translateX(-0.5rem);
+    pointer-events: none;
+    transition:
+      opacity 0.2s ease,
+      transform 0.28s ease;
+  }
+
+  body:has(.rail:hover, .rail:focus-within) .menu {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .menu__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-1);
+  }
+
+  .menu__link {
+    display: block;
+    min-block-size: var(--size-8);
+    padding-block: var(--size-2);
+    padding-inline: var(--size-3);
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--radius-1);
+    transition: background-color 0.15s ease;
+  }
+
+  .menu__link:hover {
+    background: light-dark(var(--orange-1), var(--gray-8));
+    color: light-dark(var(--orange-11), var(--gray-2));
+  }
+
+  .menu__link:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+  }
+
   main {
     --_section-gap: 2em;
-    /* min-width: calc(100vw - var(--_sheet-width)); */
     width: 100%;
     height: 100%;
     display: flex;
@@ -58,7 +161,15 @@ import "@/assets/global.css";
     gap: var(--_section-gap);
     justify-content: center;
     align-items: center;
-    height: 100%;
     margin: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body,
+    .menu,
+    .menu__link,
+    .rail__mark {
+      transition: none;
+    }
   }
 </style>
