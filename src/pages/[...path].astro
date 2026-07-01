@@ -1,0 +1,59 @@
+---
+import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import Layout from '@/layouts/Layout.astro';
+import Gallery from '@/components/Gallery.astro';
+
+export async function getStaticPaths() {
+  const pages = await getCollection('pages', (page) => !page.data.draft);
+
+  return pages.map((page) => ({
+    params: { path: page.data.path },
+    props: { page },
+  }));
+}
+
+interface Props {
+  page: CollectionEntry<'pages'>;
+}
+
+const { page }: Props = Astro.props;
+const { Content } = await render(page);
+const gallery = page.data.gallery ?? [];
+---
+
+<Layout>
+  <article class="page">
+    <header class="page__header">
+      <h1 class="page__title">{page.data.title}</h1>
+    </header>
+
+    {gallery.length > 0 && <Gallery images={gallery} alt={page.data.title} />}
+
+    <div class="page__body">
+      <Content />
+    </div>
+  </article>
+</Layout>
+
+<style>
+  .page {
+    width: 100%;
+    max-width: 80rem;
+    padding-inline: var(--size-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-6);
+  }
+
+  .page__title {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: var(--font-size-7);
+  }
+
+  .page__body {
+    max-width: 48rem;
+    font-family: var(--font-body);
+  }
+</style>

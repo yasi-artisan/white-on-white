@@ -20,19 +20,27 @@ media_libraries:
 collections:
   - name: pages
     label: Pages
-    label_singular: Post
+    label_singular: Page
     folder: /src/data/pages
-    create: true
+    extension: mdx
     fields:
       - { label: Title, name: title, widget: string }
-      - { label: Date, name: date, widget: datetime, type: date }
+      - { label: Draft, name: draft, widget: boolean, default: true }
       - { label: Body, name: body, widget: richtext }
+      - { label: Path, name: path, widget: string }
       - {
           label: Cover Image,
           name: cover_image,
           widget: image,
           media_library: cloudinary,
+          required: false,
         }
+      - { name: gallery,
+          label: Gallery, 
+          widget: image, 
+          multiple: true,
+          required: false,
+        }  
 
 singletons:
   - name: settings

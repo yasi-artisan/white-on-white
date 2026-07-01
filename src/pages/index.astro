@@ -144,6 +144,8 @@ const sections = [
 </script>
 
 <style lang="postcss">
+  @import "open-props/media.min.css";
+
   .content {
     --_width: max(380px, 40dvw);
     max-width: var(--_width);
@@ -171,6 +173,16 @@ const sections = [
     }
     #shape-scrubber {
       grid-area: origami;
+    }
+  }
+
+  @media (--md-n-above) {
+    .content {
+      /* grid-template-columns: 1fr auto;
+      grid-template-rows: 1fr;
+      grid-template-areas:
+        "origami heading"; */
+        --_width: max(380px, 60dvw);
     }
   }
 </style>

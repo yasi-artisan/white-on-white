@@ -1,0 +1,66 @@
+---
+interface Props {
+  images: string[];
+  /** Base alt text; each image is numbered off of it (e.g. "Installations 3"). */
+  alt?: string;
+}
+const { images, alt = "Gallery image" } = Astro.props;
+---
+
+<div class="mosaic">
+  {
+    images.map((src, i) => (
+      <a class="mosaic__tile" href={src} target="_blank" rel="noopener noreferrer">
+        <img
+          class="mosaic__img"
+          src={src}
+          alt={`${alt} ${i + 1}`}
+          loading="lazy"
+          decoding="async"
+        />
+      </a>
+    ))
+  }
+</div>
+
+<style>
+  .mosaic {
+    margin: 0;
+    /* Responsive masonry: fit as many columns as possible at ≥16rem, cap at 4. */
+    columns: 4 16rem;
+    column-gap: var(--size-3);
+  }
+
+  .mosaic__tile {
+    display: block;
+    break-inside: avoid;
+    margin: 0 0 var(--size-3);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-2);
+    background: light-dark(var(--gray-1), var(--gray-8));
+  }
+
+  .mosaic__img {
+    display: block;
+    width: 100%;
+    height: auto;
+    transition: transform 0.5s ease;
+  }
+
+  .mosaic__tile:hover .mosaic__img,
+  .mosaic__tile:focus-visible .mosaic__img {
+    transform: scale(1.04);
+  }
+
+  .mosaic__tile:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mosaic__img {
+      transition: none;
+    }
+  }
+</style>

@@ -3,9 +3,12 @@ import { defineConfig } from 'astro/config';
 import { fontProviders } from 'astro/config'
 import cloudflare from '@astrojs/cloudflare';
 
+import mdx from '@astrojs/mdx';
+
 // https://astro.build/config
 export default defineConfig({
   adapter: cloudflare(),
+
   fonts: [
     {
       provider: fontProviders.fontshare(),
@@ -18,6 +21,7 @@ export default defineConfig({
       cssVariable: "--font-display",
     }
   ],
+
   vite: {
     resolve: {
       alias: {
@@ -25,4 +29,6 @@ export default defineConfig({
       },
     },
   },
+
+  integrations: [mdx()],
 });

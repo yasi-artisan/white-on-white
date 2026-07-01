@@ -14,9 +14,9 @@ const { title }: Props = Astro.props;
 ---
 
 <footer class="footer">
-  <p class="site-title">{title}</p>
+  <div class="site-title">{title}</div>
   <p class="acknowledgment">
-    Made with ❤️ by Kaveh Rafie
+    Developed with ❤️ by Kaveh Rafie
     <!-- <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> -->
   </p>
   <div class="footer-links">
@@ -44,23 +44,24 @@ const { title }: Props = Astro.props;
     grid-template-columns: 1fr auto;
     grid-template-rows: auto 1fr;
     grid-template-areas:
-      "title acknowledgment"
-      "links links";
+      "title title"
+      "links acknowledgment";
   }
 .acknowledgment {
   padding-block: var(--size-relative-4);
   grid-area: acknowledgment;
   font-size: calc(var(--size-3) * 0.875);
+  color: light-dark(var(--gray-7), var(--gray-7));
 }
 .site-title {
   grid-area: title;
   font-size: var(--size-3);
-  color: light-dark(var(--gray-8), var(--gray-6));
-}
-.footer-links {
-  
   padding-block: var(--size-relative-4);
-  border-top: 1px solid light-dark(var(--gray-2), var(--gray-8));
+  color: light-dark(var(--gray-8), var(--gray-6));
+  border-bottom: 1px solid light-dark(var(--gray-2), var(--gray-8));
+}
+.footer-links { 
+  padding-block: var(--size-relative-4);
   grid-area: links;
   flex: 1;
   width: 100%;

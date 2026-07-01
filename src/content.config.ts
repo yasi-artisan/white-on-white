@@ -1,4 +1,4 @@
-import { defineCollection } from "astro:content";
+import { defineCollection, reference } from "astro:content";
 import { z } from "astro/zod";
 import { glob } from "astro/loaders";
 
@@ -14,9 +14,26 @@ const settings = defineCollection({
         }),
       )
       .optional(),
+    footerLinks: z.array( 
+      z.object({
+        label: z.string(),
+        url: z.string(),
+      }),
+    ).optional(),
   }),
+});
+
+const pages = defineCollection({
+  loader: glob({ pattern: "**/*.{mdx,md}", base: "src/data/pages" }),
+  schema: z.object({
+    title: z.string(),
+    draft: z.boolean().default(true),
+    path: z.string(),
+    gallery: z.array(z.string()).optional(),
+    parents: z.array(reference("pages")).optional(),
+  })
 });
 
 // Expose your defined collection to Astro
 // with the `collections` export
-export const collections = { settings };
+export const collections = { settings, pages };

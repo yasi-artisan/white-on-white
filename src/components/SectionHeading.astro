@@ -31,7 +31,9 @@ const { id, sections } = Astro.props;
   </div>
 </header>
 
-<style>
+<style lang="postcss">
+
+@import "open-props/media.min.css";
   .section-heading {
     width: 100%;
     display: grid;
@@ -42,13 +44,15 @@ const { id, sections } = Astro.props;
   /* One grid cell shared by every title → they stack and the cell sizes to
      the tallest, so the layout never jumps as the active title changes. */
   .heading-stack {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     width: 100%;
     min-height: 1.6em;
+    gap: 0.2em;
   }
 
   .heading-link {
-    grid-area: 1 / 1;
+ 
     font-family: var(--font-heading);
     font-size: var(--size-3);
     font-weight: 600;
@@ -56,7 +60,7 @@ const { id, sections } = Astro.props;
     text-decoration: none;
     color: inherit;
 
-    opacity: 0;
+    opacity: 0.5;
     transform: translateY(0.2em);
     pointer-events: none;
     transition:
@@ -73,5 +77,12 @@ const { id, sections } = Astro.props;
   .heading-link:hover {
     text-decoration: underline;
     text-underline-offset: 0.2em;
+  }
+
+  @media (--md-n-above) {
+    .heading-stack {
+      flex-direction: row;
+      gap: 1em;
+    }
   }
 </style>

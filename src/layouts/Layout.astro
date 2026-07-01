@@ -18,7 +18,7 @@ const menuLinks = settings?.data?.menuLinks ?? [];
     <Font cssVariable="--font-satoshi" />
     <Font cssVariable="--font-display" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
+    <!-- <link rel="icon" href="/favicon.ico" /> -->
     <meta name="generator" content={Astro.generator} />
     <title>{siteName}</title>
   </head>
@@ -52,20 +52,12 @@ const menuLinks = settings?.data?.menuLinks ?? [];
 </html>
 
 <style>
-  @property --_sheet {
-    syntax: "<length>";
-    inherits: true;
-    initial-value: 2rem;
-  }
-
   body {
-    overflow: hidden;
-    /* Collapsed rail by default; widens on hover/focus-within. */
-    --_sheet: var(--size-7);
+    overflow-x: hidden;
+    /* Column 1 hugs the rail; the rail's own width animates open on hover. */
     display: grid;
-    grid-template-columns: var(--_sheet) 1fr;
+    grid-template-columns: auto 1fr;
     grid-template-rows: 1fr;
-    transition: --_sheet 0.28s ease;
 
     a {
       color: light-dark(var(--gray-9), var(--gray-3));
@@ -73,13 +65,16 @@ const menuLinks = settings?.data?.menuLinks ?? [];
   }
 
   /* Reveal on hover (mouse) and focus-within (keyboard + touch AT). */
-  body:has(.rail:hover, .rail:focus-within) {
-    --_sheet: min(30ch, 80vw);
+  .rail:hover,
+  .rail:focus-within {
+    width: min(30ch, 80vw);
   }
 
 
-
   .rail {
+    /* Collapsed by default; widens on hover/focus-within. */
+    width: var(--size-7);
+    transition: width 0.28s ease;
     display: flex;
     align-items: stretch;
     gap: var(--size-3);
@@ -125,8 +120,9 @@ const menuLinks = settings?.data?.menuLinks ?? [];
   }
 
   .menu {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 0;
+    width: calc(100% - 8px);
     align-self: center;
     /* Hidden until the rail opens: clipped by overflow, non-interactive,
        and faded out — but still in the a11y tree and tab order. */
@@ -159,6 +155,8 @@ const menuLinks = settings?.data?.menuLinks ?? [];
     padding-block: var(--size-2);
     padding-inline: var(--size-3);
     color: inherit;
+    height: 100%;
+    min-inline-size: var(--size-7);
     text-decoration: none;
     border-radius: var(--radius-1);
     transition: background-color 0.15s ease;
