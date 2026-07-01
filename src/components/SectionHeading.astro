@@ -1,0 +1,77 @@
+---
+// Dynamic section title. All titles share one grid cell; only the title whose
+// index matches the currently-visible origami shape is shown (and is a real
+// link to that section's page). The page toggles `.is-active` as shapes morph.
+export interface Section {
+  label: string;
+  href: string;
+}
+
+interface Props {
+  id: string;
+  sections: Section[];
+}
+
+const { id, sections } = Astro.props;
+---
+
+<header class="section-heading" {id}>
+  <div class="heading-stack">
+    {
+      sections.map((s, i) => (
+        <a
+          class:list={["heading-link", { "is-active": i === 0 }]}
+          data-shape-index={i}
+          href={s.href}
+        >
+          {s.label}
+        </a>
+      ))
+    }
+  </div>
+</header>
+
+<style>
+  .section-heading {
+    width: 100%;
+    display: grid;
+    place-items: center;
+    text-align: center;
+  }
+
+  /* One grid cell shared by every title → they stack and the cell sizes to
+     the tallest, so the layout never jumps as the active title changes. */
+  .heading-stack {
+    display: grid;
+    width: 100%;
+    min-height: 1.6em;
+  }
+
+  .heading-link {
+    grid-area: 1 / 1;
+    font-family: var(--font-heading);
+    font-size: var(--size-3);
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-decoration: none;
+    color: inherit;
+
+    opacity: 0;
+    transform: translateY(0.2em);
+    pointer-events: none;
+    transition:
+      opacity 0.4s ease,
+      transform 0.4s ease;
+  }
+
+  .heading-link.is-active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .heading-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+</style>

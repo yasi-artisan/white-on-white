@@ -16,23 +16,41 @@ import "@/assets/global.css";
     <title>Astro Basics</title>
   </head>
   <body>
-    <slot />
-    <footer>
-      <p>
-        Made with ❤️ by
-        <a href="https://astro.build" target="_blank" rel="noopener">Astro</a>
-      </p>
-    </footer>
+    <aside></aside>
+    <main>
+      <slot />
+      <footer>
+        <p>
+          Made with ❤️ by
+          <a href="https://astro.build" target="_blank" rel="noopener">Astro</a>
+        </p>
+      </footer>
+    </main>
   </body>
 </html>
 
-<style lang="postcss">
-  
-  html,
+<style>
   body {
+    overflow: hidden;
+    --_sheet-width: var(--size-12);
+    display: grid;
+    grid-template-columns: var(--_sheet-width) 1fr;
+    grid-template-rows: 1fr;
+    transition: grid 0.2s;
+  }
+  body:has(aside:hover) {
+    --_sheet-width: var(--size-header-2);
+  }
+  aside {
+    border-right: 1px solid var(--border-color);
+    cursor: pointer;
+    transition:
+      background-color 0.2s,
+      grid 0.2s;
+  }
+  main {
     --_section-gap: 2em;
-
-    margin: 0;
+    /* min-width: calc(100vw - var(--_sheet-width)); */
     width: 100%;
     height: 100%;
     display: flex;
@@ -40,6 +58,7 @@ import "@/assets/global.css";
     gap: var(--_section-gap);
     justify-content: center;
     align-items: center;
-
+    height: 100%;
+    margin: 0;
   }
 </style>

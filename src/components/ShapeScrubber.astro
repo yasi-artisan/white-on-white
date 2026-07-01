@@ -1,0 +1,105 @@
+---
+// Minimal scrubber: a 1px black rail with a simple gray pill handle. The pill
+// is a plain element whose `--pos` (0..max) the page updates every frame from
+// the animation's continuous scrub value, so it glides in lockstep with the
+// morph. A transparent native <input type="range"> (fine step) sits on top to
+// provide smooth dragging; the page snaps to a stage and commits on release.
+interface Section {
+  label: string;
+  href: string;
+}
+
+interface Props {
+  id: string;
+  sections: Section[];
+}
+
+const { id, sections } = Astro.props;
+const max = sections.length - 1;
+---
+
+<div class="scrubber" {id} style={`--max: ${max};`}>
+  <div class="scrubber-rail" aria-hidden="true">
+    <!-- <span class="scrubber-thumb" style="--pos: 0;"></span> -->
+    <svg
+      class="scrubber-thumb"
+      xmlns="http://www.w3.org/2000/svg"
+      height="24px"
+      viewBox="0 -960 960 960"
+      width="24px"
+      style="--pos: 0;"
+      ><path
+        d="M120-160q0-56 24.5-106t69.5-84q-44-28-69-73t-25-97q0-116 81.5-198T400-800q66 0 125.5 30.5T625-685q22-35 57.5-55t76.5-20q63 0 112 33t49 90q0 47-33 80t-80 33h-7v164q0 84-58.5 142T600-160H120Zm200-240q50 0 85-38.5t35-81.5q0-24-11-32t-25-8q-20 0-32 11.5T360-520h-80q0-50 35-85t86-35q49 0 84 33t35 87q0 29-11 61.5T478-400h62q25 0 42.5-17t17.5-43v-60q0-83-58.5-141.5T400-720q-84 0-142 58.5T200-520q0 51 34.5 85.5T320-400Zm-99 160h379q50 0 85-34.5t35-85.5v-164q0-35 21-57.5t56-22.5h13q14 0 22-9.5t8-23.5q0-11-7-19t-18-12q-14-5-28-8.5t-28-3.5q-33 0-56 23.5T680-600v140q0 59-41 99.5T540-320H360q-44 0-80.5 21.5T221-240Zm494-6Z"
+      ></path></svg
+    >
+  </div>
+  <input
+    class="scrubber-input"
+    type="range"
+    min="0"
+    max={max}
+    step="0.01"
+    value="0"
+    aria-label="Scrub through sections"
+  />
+</div>
+
+<style>
+  .scrubber {
+    padding-block: 2em;
+    margin-block: var(--size-px-5);
+
+    position: relative;
+    width: min(100%, 24rem);
+    height: 16px;
+    display: grid;
+    place-items: center;
+    --_rail-color: light-dark(var(--gray-2), var(--gray-9));
+
+    &:hover {
+      --_rail-color: light-dark(var(--gray-8), var(--gray-5));
+    }
+  }
+
+  /* Inset by half the pill width so the handle never spills past the ends. */
+  .scrubber-rail {
+    position: relative;
+    width: calc(100% - 28px);
+    height: 2px;
+    background: var(--_rail-color);
+    transition: background 0.2s ease;
+  }
+
+  .scrubber-thumb {
+    position: absolute;
+    bottom: 0%;
+    left: calc(var(--pos, 0) / var(--max, 1) * 100%);
+    width: 28px;
+    /* height: 9px; */
+    border-radius: 999px;
+    --flip: 1;
+    transform: translate(-50%, 0) scaleX(var(--flip));
+    transform-origin: center;
+    transition: transform 0.4s ease;
+    pointer-events: none;
+    color: var(--_rail-color);
+
+    fill: currentColor;
+  }
+
+  /* Mirrored when the loop is on its return leg. */
+  .scrubber-thumb.is-flipped {
+    --flip: -1;
+  }
+
+  /* Invisible but fully interactive + accessible. Inset to match the rail so
+     clicks map onto the pill's travel, not the full container width. */
+  .scrubber-input {
+    position: absolute;
+    inset: 0 14px;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: ew-resize;
+  }
+</style>

@@ -1,24 +1,26 @@
 ---
 import Origami from "../components/origami/Origami.astro";
-import ShapeNav from "../components/ShapeNav.astro";
+import SectionHeading from "../components/SectionHeading.astro";
+import ShapeScrubber from "../components/ShapeScrubber.astro";
 import Layout from "../layouts/Layout.astro";
+
+// One section per origami shape, in shape order (see origami-data.ts).
+// The label becomes the dynamic heading; the href is the page each shape
+// links to (pages aren't built yet — they'll 404 until scaffolded).
+const sections = [
+  { label: "Community Projects", href: "/community" },
+  { label: "Installations", href: "/installations" },
+  { label: "Papermaking / Printmaking", href: "/papermaking" },
+  { label: "Painting", href: "/painting" },
+  { label: "About", href: "/about" },
+];
 ---
 
 <Layout>
   <section class="content">
     <Origami id="shape-shifter" />
-    <aside>
-      <ShapeNav
-        id="shape-controls"
-        labels={[
-          "Community Projects",
-          "Installations",
-          "Papermaking/Printmaking",
-          "Painting",
-          "About",
-        ]}
-      />
-    </aside>
+    <SectionHeading id="section-heading" sections={sections} />
+    <ShapeScrubber id="shape-scrubber" sections={sections} />
   </section>
 </Layout>
 
@@ -26,7 +28,16 @@ import Layout from "../layouts/Layout.astro";
   import { OrigamiAnimation } from "../components/origami/origami-animation";
   import { shapes, defaultConfig } from "../components/origami/origami-data";
 
-  // One instance, owned here, driving both the stage and the nav.
+  // Must match the `sections` array in the frontmatter above.
+  const sections = [
+    { label: "Community Projects", href: "/community" },
+    { label: "Installations", href: "/installations" },
+    { label: "Papermaking / Printmaking", href: "/papermaking" },
+    { label: "Painting", href: "/painting" },
+    { label: "About", href: "/about" },
+  ];
+
+  // One instance, owned here, driving the stage, heading, and scrubber.
   const anim = new OrigamiAnimation(
     document.querySelector("#shape-shifter")!,
     shapes.map((s) => s.contour),
@@ -34,44 +45,114 @@ import Layout from "../layouts/Layout.astro";
   );
   anim.startLoop();
 
-  const buttons = Array.from(
-    document.querySelectorAll<HTMLButtonElement>(
-      "#shape-controls .shape-nav-btn",
+  const headingLinks = Array.from(
+    document.querySelectorAll<HTMLAnchorElement>(
+      "#section-heading .heading-link",
     ),
   );
+  const scrubber = document.querySelector<HTMLInputElement>(
+    "#shape-scrubber .scrubber-input",
+  )!;
+  const thumb = document.querySelector<SVGSVGElement>(
+    "#shape-scrubber .scrubber-thumb",
+  )!;
 
-  const sync = () => {
-    const busy = anim.isTransitioning;
-    for (const btn of buttons) {
-      const active = Number(btn.dataset.shapeIndex) === anim.currentShape;
-      btn.classList.toggle("is-active", active);
-      btn.setAttribute("aria-pressed", String(active));
-      btn.disabled = busy;
-    }
+  // Visit the page for whatever shape is currently on screen.
+  const goToSection = (index: number) => {
+    const href = sections[index]?.href;
+    if (href) window.location.href = href;
   };
 
-  for (const btn of buttons) {
-    btn.addEventListener("click", () =>
-      anim.goTo(Number(btn.dataset.shapeIndex)),
-    );
-  }
+  // Clicking inside the drawn contour visits the current section's page.
+  const contour = document.querySelector<SVGPathElement>(
+    "#shape-shifter .origami-contour",
+  );
+  contour?.addEventListener("click", () => goToSection(anim.currentShape));
+
+  // The slider is a true scrubber: dragging morphs the contour in real time
+  // (folds hidden while between shapes); releasing eases onto the nearest
+  // stage and only then draws that stage's folds.
+  const maxStage = sections.length - 1;
+  let dragging = false;
+
+  const placeThumb = (v: number) => thumb.style.setProperty("--pos", String(v));
+
+  scrubber.addEventListener("pointerdown", () => {
+    dragging = true;
+  });
+
+  scrubber.addEventListener("input", () => {
+    const v = Number(scrubber.value);
+    placeThumb(v);
+    anim.scrubTo(v);
+  });
+
+  scrubber.addEventListener("change", () => {
+    const releaseValue = Number(scrubber.value);
+    const target = Math.max(0, Math.min(maxStage, Math.round(releaseValue)));
+    scrubber.value = String(target);
+    dragging = false;
+    // The pill eases onto `target` via onScrub during the commit — no snap.
+    anim.commitScrub(target, releaseValue);
+  });
+
+  // Keyboard: arrow keys jump a whole stage (the native 0.01 step is too fine),
+  // easing onto each step and drawing its folds.
+  scrubber.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const fromValue = Math.round(Number(scrubber.value));
+    const dir = e.key === "ArrowRight" ? 1 : -1;
+    const target = Math.max(0, Math.min(maxStage, fromValue + dir));
+    scrubber.value = String(target);
+    dragging = false;
+    anim.commitScrub(target, fromValue);
+  });
+
+  // The thumb follows the scrub position — during the auto-loop's morphs and
+  // while a commit eases onto its target. Only the user's own drag drives the
+  // thumb directly (via `input`), so leave it alone then. The thumb mirrors
+  // whenever the loop is on its return leg (scrub value decreasing); we skip
+  // that check during a commit so the ease direction can't trigger a flip.
+  let prevScrub = 0;
+  anim.onScrub((v) => {
+    if (dragging) return;
+    placeThumb(v);
+    if (anim.isTransitioning) {
+      prevScrub = v;
+      return;
+    }
+    if (v < prevScrub - 0.001) thumb.classList.add("is-flipped");
+    else if (v > prevScrub + 0.001) thumb.classList.remove("is-flipped");
+    prevScrub = v;
+  });
+
+  // Discrete: swap the visible heading + keep the input's value baseline
+  // correct for keyboard use.
+  const sync = () => {
+    const current = anim.currentShape;
+    for (const link of headingLinks) {
+      link.classList.toggle(
+        "is-active",
+        Number(link.dataset.shapeIndex) === current,
+      );
+    }
+    if (scrubber.value !== String(current)) scrubber.value = String(current);
+  };
 
   anim.onChange(sync);
 </script>
 
 <style lang="postcss">
-
   .content {
-    --_width: max(380px, 60dvw);
+    --_width: max(380px, 40dvw);
     max-width: var(--_width);
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: var(--size-5);
     height: 100%;
     width: 100%;
-  }
-
-  aside {
-    
   }
 </style>

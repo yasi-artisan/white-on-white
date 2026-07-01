@@ -18,10 +18,11 @@ media_libraries:
       api_key: 447547158277739
 
 collections:
-  - name: posts
-    label: Posts
+  - name: pages
+    label: Pages
     label_singular: Post
-    folder: /src/content/posts
+    folder: /src/content/pages
+    create: true
     fields:
       - { label: Title, name: title, widget: string }
       - { label: Date, name: date, widget: datetime, type: date }
@@ -32,3 +33,20 @@ collections:
           widget: image,
           media_library: cloudinary,
         }
+
+singletons:
+  - name: settings
+    label: Site Settings
+    file: content/settings.yaml
+    fields:
+      - { label: Site Name, name: site_name }
+      - name: menu-links
+        label: Menu Links
+        widget: list
+        fields:
+          - name: label
+            label: Label
+            widget: string
+          - name: url
+            label: URL
+            widget: string

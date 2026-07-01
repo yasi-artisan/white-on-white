@@ -5,4 +5,5 @@
 :root {
   --font-heading: var(--font-display);
   --font-body: var(--font-satoshi);
+  --border-color: light-dark(var(--gray-5), var(--gray-7));
 }

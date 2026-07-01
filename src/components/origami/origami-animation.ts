@@ -37,6 +37,17 @@ export class OrigamiAnimation {
   #paused = false;
   #listeners = new Set<ChangeListener>();
 
+  /* Continuous scrub position (float). Equals `#currentShape` when idle, but
+     interpolates between shapes during a morph so a scrubber thumb can glide
+     in lockstep with the contour instead of snapping between stages. */
+  #scrub = 0;
+  #scrubListeners = new Set<(value: number) => void>();
+
+  /* Live-scrub state: a paused morph tween whose progress tracks the slider. */
+  #scrubTween: gsap.core.Tween | null = null;
+  #scrubSegFrom = -1;
+  #scrubSegTo = -1;
+
   constructor(root: HTMLElement, contours: string[], cfg: OrigamiAnimConfig) {
     this.#root = root;
     this.contours = contours;
@@ -82,6 +93,24 @@ export class OrigamiAnimation {
     };
   }
 
+  /** Continuous scrub position (0 to n-1, fractional during a morph). */
+  get scrub(): number {
+    return this.#scrub;
+  }
+
+  /**
+   * Subscribe to continuous scrub updates — fires every frame while a morph
+   * is running, so a scrubber thumb can glide in lockstep with the contour.
+   * Returns an unsubscribe function.
+   */
+  onScrub(fn: (value: number) => void): () => void {
+    this.#scrubListeners.add(fn);
+    fn(this.#scrub);
+    return () => {
+      this.#scrubListeners.delete(fn);
+    };
+  }
+
   /**
    * Morph to a specific shape.  Kills the auto-loop (if running) so the
    * animation stays on the target shape until the next `goTo()` call.
@@ -124,9 +153,117 @@ export class OrigamiAnimation {
     this.#transition(tl, from, target, { morphOffset: "-=0.2" });
   }
 
+  /**
+   * Scrub the contour to an arbitrary fractional position (0 to n-1) so it
+   * tracks the slider in real time. Kills the auto-loop and any in-flight
+   * transition, hides the fold lines, and morphs the contour between the two
+   * adjacent shapes. Folds stay hidden until commitScrub() draws them — the
+   * "when the morph ends, the current state's drawing is done" step.
+   */
+  scrubTo(value: number): void {
+    this.#killTimelines();
+    this.#paused = true;
+
+    const last = this.contours.length - 1;
+    const v = gsap.utils.clamp(0, last, value);
+    const from = Math.floor(v);
+    const to = Math.min(from + 1, last);
+    const frac = v - from;
+
+    // Folds belong to discrete shapes, so hide them while the contour is
+    // between shapes; commitScrub() draws the settled shape's folds.
+    this.#innerGroups.forEach((g) => gsap.set(g, { visibility: "hidden" }));
+    gsap.set(this.#contour, { visibility: "visible" });
+
+    // Reuse the morph tween within a segment; only rebuild it (killing the old
+    // one) when the adjacent pair changes. Killing it every call would leave
+    // progress() pointing at a dead tween and the morph wouldn't follow.
+    if (this.#scrubSegFrom !== from || this.#scrubSegTo !== to) {
+      this.#scrubTween?.kill();
+      gsap.set(this.#contour, { morphSVG: { shape: this.contours[from] } });
+      this.#scrubTween = gsap.to(this.#contour, {
+        morphSVG: { shape: this.contours[to] },
+        duration: 1,
+        ease: "none",
+        paused: true,
+        overwrite: "auto",
+      });
+      this.#scrubSegFrom = from;
+      this.#scrubSegTo = to;
+    }
+    this.#scrubTween?.progress(frac);
+  }
+
+  /**
+   * Finish a scrub: ease the contour from `fromValue` onto the target stage
+   * (running the morph to the end of the transition, with no hard snap), then
+   * draw that shape's fold lines once the contour has settled.
+   */
+  commitScrub(target: number, fromValue: number): void {
+    this.#scrubTween?.kill();
+    this.#scrubTween = null;
+    this.#scrubSegFrom = this.#scrubSegTo = -1;
+
+    this.#isTransitioning = true;
+    this.#stage.classList.add("is-transitioning");
+    this.#setShape(target);
+
+    this.#innerGroups.forEach((g, i) =>
+      gsap.set(g, { visibility: i === target ? "visible" : "hidden" }),
+    );
+
+    // Ease the contour onto the target instead of snapping. Duration scales
+    // with the remaining distance so the finish always matches the morph's
+    // natural pace (a near-stage release settles quickly).
+    const remaining = Math.abs(target - fromValue);
+    const settle = gsap.utils.clamp(
+      0.15,
+      this.cfg.morphDuration,
+      remaining * this.cfg.morphDuration,
+    );
+
+    const tl = gsap.timeline({
+      defaults: { overwrite: "auto" },
+      onComplete: () => {
+        this.#isTransitioning = false;
+        this.#scrub = target;
+        this.#stage.classList.remove("is-transitioning");
+        this.#notifyListeners();
+        // Resume the auto-loop forward from here after the usual beat (paused
+        // if the pointer is hovering the contour).
+        this.#resumeFrom(target);
+      },
+    });
+
+    tl.to(this.#contour, {
+      morphSVG: { shape: this.contours[target] },
+      duration: settle,
+      ease: this.cfg.morphEase,
+    });
+
+    // Glide the scrub position alongside so the pill eases onto the target too.
+    const scrubProxy = { p: fromValue };
+    tl.to(
+      scrubProxy,
+      {
+        p: target,
+        duration: settle,
+        ease: this.cfg.morphEase,
+        onUpdate: () => {
+          this.#scrub = scrubProxy.p;
+          this.#notifyScrub();
+        },
+      },
+      0,
+    );
+
+    // With the contour settled, draw the target's fold lines.
+    this.#staggerDraw(tl, this.#innerPolys[target]);
+  }
+
   // -- lifecycle called by Origami.astro's inline boot script -----------
 
-  /** Start the repeating morph loop (shapes 0 → 1 → … → 0). */
+  /** Start the repeating morph loop, beginning from the first shape. */
   startLoop(): void {
     const mtl = gsap.timeline({ defaults: { overwrite: "auto" } });
     this.#masterTl = mtl;
@@ -136,30 +273,65 @@ export class OrigamiAnimation {
     this.#revealShape(mtl, 0);
     mtl.to({}, { duration: this.cfg.pauseAfterDraw });
 
-    // Phase 2: repeating morph loop
-    this.#loopTl = gsap.timeline({
+    // Phase 2: repeating ping-pong loop
+    this.#loopTl = this.#buildLoopTl(0);
+    mtl.add(this.#loopTl);
+  }
+
+  /**
+   * Build the repeating morph loop starting at `from`. The sequence ping-pongs
+   * — up from `from` to the last shape, back down to the first, then up to
+   * `from` again — so it returns to its start and repeats, and never makes a
+   * long jump back to shape 0. Shared by the initial loop and the post-commit
+   * resume so a manual selection continues from the chosen shape.
+   */
+  #buildLoopTl(from: number): gsap.core.Timeline {
+    const loopTl = gsap.timeline({
       repeat: -1,
       repeatDelay: this.cfg.pauseBetweenCycles,
     });
-
     const n = this.contours.length;
-    for (let i = 0; i < n; i++) {
-      const from = i;
-      const to = (i + 1) % n;
 
-      // Block hover during the morph+draw segment
-      this.#loopTl.call(() => this.#stage.classList.add("is-transitioning"));
-      // Advance active shape mid-step (after morph, before folds draw)
-      this.#transition(this.#loopTl, from, to, {
-        onMorphed: () => this.#setShape(to),
-      });
-      // Re-enable hover once drawing is complete
-      this.#loopTl.call(() => this.#stage.classList.remove("is-transitioning"));
+    // Forward leg: up from `from` to the last shape.
+    for (let s = from; s < n - 1; s++) this.#appendStep(loopTl, s, s + 1);
+    // Return leg: back down to the first shape.
+    for (let s = n - 1; s > 0; s--) this.#appendStep(loopTl, s, s - 1);
+    // Forward again: up from the first shape to `from`.
+    for (let s = 0; s < from; s++) this.#appendStep(loopTl, s, s + 1);
 
-      this.#loopTl.to({}, { duration: this.cfg.pauseAfterDraw });
-    }
+    return loopTl;
+  }
 
+  /** Append one morph step (hide → morph → draw → pause) to a timeline. */
+  #appendStep(tl: gsap.core.Timeline, a: number, b: number): void {
+    // Block hover during the morph+draw segment
+    tl.call(() => this.#stage.classList.add("is-transitioning"));
+    // Advance active shape mid-step (after morph, before folds draw)
+    this.#transition(tl, a, b, { onMorphed: () => this.#setShape(b) });
+    // Re-enable hover once drawing is complete
+    tl.call(() => this.#stage.classList.remove("is-transitioning"));
+    tl.to({}, { duration: this.cfg.pauseAfterDraw });
+  }
+
+  /**
+   * Resume the auto-loop forward from `target` after the post-draw wait. Called
+   * once a manual selection's folds finish drawing, so the showcase keeps going
+   * from the chosen shape instead of freezing or resetting to 0. Starts paused
+   * if the pointer is currently hovering the contour.
+   */
+  #resumeFrom(target: number): void {
+    this.#paused = false;
+    this.#killTimelines();
+
+    const mtl = gsap.timeline({ defaults: { overwrite: "auto" } });
+    this.#masterTl = mtl;
+    // The target's folds are already drawn; hold for the usual beat, then
+    // resume the ping-pong loop forward from here.
+    mtl.to({}, { duration: this.cfg.pauseAfterDraw });
+    this.#loopTl = this.#buildLoopTl(target);
     mtl.add(this.#loopTl);
+
+    if (this.#stage.classList.contains("is-hovering")) mtl.pause();
   }
 
   /** Draw a single shape then wait (no loop). */
@@ -197,6 +369,10 @@ export class OrigamiAnimation {
 
   #notifyListeners(): void {
     for (const fn of this.#listeners) fn(this.#currentShape);
+  }
+
+  #notifyScrub(): void {
+    for (const fn of this.#scrubListeners) fn(this.#scrub);
   }
 
   #setShape(index: number): void {
@@ -262,6 +438,17 @@ export class OrigamiAnimation {
     opts: { morphOffset?: gsap.Position; onMorphed?: () => void } = {},
   ): void {
     this.#staggerHide(tl, this.#innerPolys[from], this.#innerGroups[from]);
+
+    // Resolve the morph's start to an absolute time so the scrub tween below
+    // can ride *alongside* the contour morph. Passing the raw offset to both
+    // would append the scrub tween after the morph when the offset is
+    // undefined (the loop case) and push the fold-draw out of sync.
+    const at = tl.duration();
+    const morphAt =
+      typeof opts.morphOffset === "string" && opts.morphOffset.startsWith("-=")
+        ? at - Number(opts.morphOffset.slice(2))
+        : (opts.morphOffset ?? at);
+
     tl.to(
       this.#contour,
       {
@@ -269,7 +456,26 @@ export class OrigamiAnimation {
         duration: this.cfg.morphDuration,
         ease: this.cfg.morphEase,
       },
-      opts.morphOffset,
+      morphAt,
+    );
+    // Glide the continuous scrub position alongside the contour morph so a
+    // scrubber thumb tracks the animation instead of snapping between stages.
+    // Seed the proxy with this step's `from` shape — `#scrub` can't be used
+    // here because #transition runs while the timeline is being built, before
+    // any step has played, so #scrub is still its initial value.
+    const scrubProxy = { p: from };
+    tl.to(
+      scrubProxy,
+      {
+        p: to,
+        duration: this.cfg.morphDuration,
+        ease: this.cfg.morphEase,
+        onUpdate: () => {
+          this.#scrub = scrubProxy.p;
+          this.#notifyScrub();
+        },
+      },
+      morphAt,
     );
     if (opts.onMorphed) tl.call(opts.onMorphed);
     tl.set(this.#innerGroups[to], { visibility: "visible" });
