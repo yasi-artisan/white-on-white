@@ -1,9 +1,65 @@
 @layer base, component, utility;
 
 @import "open-props/normalize";
+@import "open-props/media.min.css";
 
 :root {
   --font-heading: var(--font-display);
   --font-body: var(--font-satoshi);
   --border-color: light-dark(var(--gray-5), var(--gray-7));
+}
+
+/* ── Base ─────────────────────────────────────────────────────── */
+
+html {
+  font-size: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: var(--font-size-1);
+  line-height: 1.6;
+  color: light-dark(var(--gray-9), var(--gray-2));
+  background: light-dark(var(--gray-0), var(--gray-10));
+}
+
+/* ── Type scale ───────────────────────────────────────────────── */
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading), system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.15;
+  text-wrap: balance;
+  letter-spacing: -0.02em;
+}
+
+h1 { font-size: var(--font-size-7); }
+h2 { font-size: var(--font-size-5); }
+h3 { font-size: var(--font-size-4); }
+h4 { font-size: var(--font-size-3); }
+
+p {
+  margin-block: 0 1em;
+  max-width: 65ch;
+}
+
+a {
+  color: light-dark(var(--orange-10), var(--orange-4));
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  text-decoration-thickness: from-font;
+}
+
+::selection {
+  background: light-dark(var(--orange-4), var(--orange-9));
+  color: light-dark(var(--gray-12), var(--gray-0));
+}
+
+/* ── Responsive bump ──────────────────────────────────────────── */
+
+@media (--md-n-above) {
+  h1 { font-size: var(--font-size-8); }
+  h2 { font-size: var(--font-size-6); }
 }

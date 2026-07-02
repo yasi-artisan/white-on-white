@@ -57,29 +57,17 @@ const footerLinks = settings?.data?.footerLinks ?? [];
 <style>
   body {
     overflow-x: clip;
-    /* The rail column tracks the rail's width; the main column has a minimum
-       width equal to its collapsed size, so opening the rail pushes main right
-       (overflowing, clipped here) instead of shrinking it. */
     display: grid;
     grid-template-columns: auto minmax(calc(100% - var(--size-7)), 1fr);
     grid-template-rows: 1fr;
-
-    a {
-      color: light-dark(var(--gray-9), var(--gray-3));
-    }
   }
 
-  /* Reveal on hover (mouse) and focus-within (keyboard + touch AT). */
   .rail:hover,
   .rail:focus-within {
     width: min(30ch, 80vw);
   }
 
-
   .rail {
-    /* Collapsed by default; widens on hover/focus-within. The main column's
-       minimum width is fixed, so the widening rail pushes main right (clipped
-       by the body) instead of shrinking it. */
     width: var(--size-7);
     transition: width 0.28s ease;
     display: flex;
@@ -89,23 +77,21 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     border-right: 1px solid var(--border-color);
     overflow: hidden;
     position: relative;
-  
+
     &::after, &::before {
       content: "";
       position: absolute;
       height: 100%;
     }
     &::after {
-          border-right: 1px solid var(--border-color);
-          right: 2px;
+      border-right: 1px solid var(--border-color);
+      right: 2px;
     }
     &::before {
-          border-left: 1px solid var(--border-color);
-          right: 5px;
+      border-left: 1px solid var(--border-color);
+      right: 5px;
     }
-
   }
-
 
   .rail__mark {
     flex: 0 0 auto;
@@ -131,19 +117,13 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     min-width: 0;
     width: calc(100% - 8px);
     align-self: center;
-    /* Hidden until the rail opens: clipped by overflow, non-interactive,
-       and faded out — but still in the a11y tree and tab order. */
+    /* Hidden until the rail opens: clipped by overflow, non-interactive. */
     opacity: 0;
-    transform: translateX(-0.5rem);
     pointer-events: none;
-    transition:
-      opacity 0.2s ease,
-      transform 0.28s ease;
   }
 
   body:has(.rail:hover, .rail:focus-within) .menu {
     opacity: 1;
-    transform: none;
     pointer-events: auto;
   }
 
@@ -180,20 +160,16 @@ const footerLinks = settings?.data?.footerLinks ?? [];
   }
 
   main {
-    --_section-gap: 2em;
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--_section-gap);
     justify-content: center;
     align-items: center;
     margin: 0;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    body,
-    .menu,
     .menu__link,
     .rail__mark {
       transition: none;

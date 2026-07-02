@@ -15,11 +15,13 @@
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
+		"@astrojs/check": "^0.9.9",
 		"@astrojs/cloudflare": "14.0.1",
 		"@astrojs/mdx": "^7.0.0",
 		"astro": "7.0.3",
 		"gsap": "^3.15.0",
-		"open-props": "^1.7.23"
+		"open-props": "^1.7.23",
+		"typescript": "^6.0.3"
 	},
 	"devDependencies": {
 		"postcss-custom-media": "^12.0.1",

@@ -31,12 +31,27 @@ const base = pagePath.replace(/^\/+/, "");
   }
 </div>
 
-<style>
+<style lang="postcss">
+  @import "open-props/media.min.css";
+
   .mosaic {
     margin: 0;
-    /* Masonry, capped at 3 columns so tiles stay generous (not too wide/dense). */
-    columns: 3 14rem;
+    width: 100%;
+    /* Masonry: 1 column on mobile, 2 on tablet, 3 on desktop. */
+    columns: 1;
     column-gap: var(--size-3);
+  }
+
+  @media (--sm-n-above) {
+    .mosaic {
+      columns: 2 14rem;
+    }
+  }
+
+  @media (--md-n-above) {
+    .mosaic {
+      columns: 3 14rem;
+    }
   }
 
   .mosaic__tile {

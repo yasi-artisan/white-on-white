@@ -1,15 +1,18 @@
 ---
 import { getCollection } from 'astro:content';
 import Layout from '@/layouts/Layout.astro';
+import { buildPageTree } from '@/utils/pages';
 
 // One route per gallery image across all published pages:
-//   /image/<page-path>/<index>   e.g. /image/test/0
-// `view-transition-name: gallery-<index>` matches the thumbnail on the gallery
-// page, so the navigation morphs the tile into this image (and back).
+//   /image/<page-route>/<index>   e.g. /image/painting/series-a/0
+// The route is derived from the page's `parent` chain — matching the catch-all
+// route in src/pages/[...path].astro — so it's built from ALL published pages
+// (a parent in the chain need not have a gallery itself).
 export async function getStaticPaths() {
-  const pages = await getCollection(
-    'pages',
-    (p) => !p.data.draft && (p.data.gallery?.length ?? 0) > 0,
+  const all = await getCollection('pages', (p) => !p.data.draft);
+  const tree = buildPageTree(all);
+  const pages = all.filter(
+    (p) => p.data.template === "show" && (p.data.gallery?.length ?? 0) > 0,
   );
 
   const routes: {
@@ -18,7 +21,8 @@ export async function getStaticPaths() {
   }[] = [];
 
   for (const page of pages) {
-    const base = page.data.path.replace(/^\/+/, '');
+    const node = tree.get(page.id)!;
+    const base = node.route.replace(/^\//, '');
     const images = page.data.gallery ?? [];
     images.forEach((src, i) => {
       routes.push({
@@ -26,7 +30,7 @@ export async function getStaticPaths() {
         props: {
           src,
           alt: `${page.data.title} ${i + 1}`,
-          back: page.data.path,
+          back: node.route,
           index: i,
         },
       });

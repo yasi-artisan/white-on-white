@@ -1,4 +1,4 @@
-import { defineCollection, reference } from "astro:content";
+import { defineCollection } from "astro:content";
 import { z } from "astro/zod";
 import { glob } from "astro/loaders";
 
@@ -38,11 +38,18 @@ const pages = defineCollection({
   loader: glob({ pattern: "**/*.{mdx,md}", base: "src/data/pages" }),
   schema: z.object({
     title: z.string(),
+    // Page shape: `index` renders its children (a listing); `show` renders the
+    // body/gallery content. Defaults to `show` for back-compat with pages that
+    // predate the field.
+    template: z.enum(["index", "show"]).default("show"),
     subtitle: z.string().optional(),
     draft: z.boolean().default(true),
-    path: z.string(),
+    // Slug of an optional parent page (Sveltia `relation`, value_field {{slug}}).
+    // Drives virtual URL nesting + breadcrumbs — see src/utils/pages.ts. Nullish
+    // because Sveltia writes `null` for an unset single-select relation.
+    parent: z.string().nullish(),
+    cover_image: z.string().optional(),
     gallery: z.array(z.string()).optional(),
-    parents: z.array(reference("pages")).optional(),
   }),
 });
 

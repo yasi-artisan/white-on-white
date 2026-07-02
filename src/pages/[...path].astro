@@ -4,73 +4,222 @@ import type { CollectionEntry } from 'astro:content';
 import Layout from '@/layouts/Layout.astro';
 import Gallery from '@/components/Gallery.astro';
 import { inlineMarkdown } from '@/utils/markdown';
+import { buildPageTree, type Ancestor } from '@/utils/pages';
 
+// Pages are flat files (title → slug); URL nesting is virtual, derived from each
+// page's optional `parent` relation. A chain grandparent → parent → child
+// produces /grandparent/parent/child, a breadcrumb, and a sub-page list.
 export async function getStaticPaths() {
   const pages = await getCollection('pages', (page) => !page.data.draft);
+  const tree = buildPageTree(pages);
 
-  return pages.map((page) => ({
-    params: { path: page.data.path },
-    props: { page },
-  }));
+  return pages.map((page) => {
+    const node = tree.get(page.id)!;
+    // Children: published pages that declare this page as their parent.
+    const children = pages
+      .filter((p) => p.data.parent === page.id && p.id !== page.id)
+      .map((p) => tree.get(p.id)!)
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .map((n) => ({ title: n.title, href: n.route }));
+
+    return {
+      params: { path: node.route.replace(/^\//, '') },
+      props: {
+        page,
+        route: node.route,
+        ancestors: node.ancestors,
+        children,
+      },
+    };
+  });
 }
 
 interface Props {
   page: CollectionEntry<'pages'>;
+  route: string;
+  ancestors: Ancestor[];
+  children: { title: string; href: string }[];
 }
 
-const { page }: Props = Astro.props;
+const { page, route, ancestors, children }: Props = Astro.props;
 const { Content } = await render(page);
 const gallery = page.data.gallery ?? [];
 const subtitleHtml = inlineMarkdown(page.data.subtitle);
+// `index` pages are listings (children only); `show` pages render their content.
+const isShow = page.data.template === "show";
 ---
 
 <Layout>
   <article class="page">
-    {subtitleHtml && <span class="page__subtitle" set:html={subtitleHtml} />}
+    {ancestors.length > 0 && (
+      <nav class="page__crumbs" aria-label="Breadcrumb">
+        <ol class="page__crumbs-list">
+          {ancestors.map((ancestor) => (
+            <li class="page__crumbs-item">
+              <a href={ancestor.href}>{ancestor.title}</a>
+            </li>
+          ))}
+          <li class="page__crumbs-item is-current" aria-current="page">
+            {page.data.title}
+          </li>
+        </ol>
+      </nav>
+    )}
+    {isShow && subtitleHtml && <span class="page__subtitle" set:html={subtitleHtml} />}
     <h1 class="page__title">{page.data.title}</h1>
 
-    {gallery.length > 0 && <Gallery images={gallery} pagePath={page.data.path} alt={page.data.title} />}
+    {isShow && gallery.length > 0 && <Gallery images={gallery} pagePath={route} alt={page.data.title} />}
 
-    <div class="page__body">
-      <Content />
-    </div>
+    {isShow && (
+      <div class="page__body">
+        <Content />
+      </div>
+    )}
+
+    {children.length > 0 && (
+      <nav class="page__children">
+        <h2 class="page__children-title">Pages</h2>
+        <ul class="page__children-list">
+          {children.map((child) => (
+            <li>
+              <a href={child.href}>{child.title}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    )}
   </article>
 </Layout>
 
-<style>
+<style lang="postcss">
+  @import "open-props/media.min.css";
+
   .page {
-    padding-block-start: var(--size-relative-12);
+    padding-block-start: var(--size-7);
+    padding-inline: var(--size-3);
     width: 100%;
     max-width: 64rem;
     margin-inline: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--size-6);
+    gap: var(--size-5);
     align-items: center;
   }
 
   .page__title {
     margin: 0;
     text-align: center;
-    /* uppercase; */
     text-transform: uppercase;
-    font-weight: bold;
-    letter-spacing: 0.2em;
-    padding-block: var(--size-4);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding-block: var(--size-3);
     font-family: var(--font-heading);
-    font-size: var(--font-size-7);
+    font-size: var(--font-size-5);
+    line-height: 1.2;
   }
 
   .page__subtitle {
     margin: 0;
     text-align: center;
     font-family: var(--font-body);
-    font-size: var(--font-size-4);
+    font-size: var(--font-size-2);
+    max-width: 45ch;
+    line-height: 1.6;
   }
 
   .page__body {
     max-width: 42rem;
+    width: 100%;
     margin-inline: auto;
     font-family: var(--font-body);
+    font-size: var(--font-size-1);
+    line-height: 1.75;
+
+    /* Give MDX content breathing room */
+    & > * + * {
+      margin-block-start: 1em;
+    }
+  }
+
+  .page__crumbs {
+    align-self: flex-start;
+  }
+
+  .page__crumbs-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .page__crumbs-item {
+    font-family: var(--font-body);
+    font-size: var(--font-size-0);
+    color: light-dark(var(--gray-6), var(--gray-4));
+
+    &:not(:last-child)::after {
+      content: "›";
+      margin-inline: var(--size-2);
+      color: light-dark(var(--gray-5), var(--gray-5));
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+  }
+
+  .page__children {
+    width: 100%;
+    max-width: 42rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--size-3);
+  }
+
+  .page__children-title {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-family: var(--font-heading);
+    font-size: var(--font-size-1);
+    color: light-dark(var(--gray-6), var(--gray-4));
+  }
+
+  .page__children-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--size-2) var(--size-4);
+
+    a {
+      font-family: var(--font-body);
+      font-size: var(--font-size-1);
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
+    }
+  }
+
+  @media (--md-n-above) {
+    .page {
+      padding-block-start: var(--size-relative-12);
+      padding-inline: var(--size-5);
+      gap: var(--size-6);
+    }
+
+    .page__title {
+      font-size: var(--font-size-7);
+      letter-spacing: 0.2em;
+    }
+
+    .page__subtitle {
+      font-size: var(--font-size-4);
+    }
   }
 </style>

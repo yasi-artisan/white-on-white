@@ -183,12 +183,9 @@ const sections = settings?.data.landingPageSettings.links ?? [];
   @import "open-props/media.min.css";
 
   .content {
-    --_width: max(380px, 40dvw);
+    --_width: min(100%, 380px);
     max-width: var(--_width);
     display: grid;
-    /* flex-direction: column; */
-    /* justify-content: center; */
-    /* align-items: center; */
     place-content: center;
     justify-content: center;
     place-items: center;
@@ -197,8 +194,7 @@ const sections = settings?.data.landingPageSettings.links ?? [];
     grid-template-areas:
       "origami"
       "heading";
-    gap: var(--size-5);
-    height: 100%;
+    gap: var(--size-4);
     width: 100%;
 
     #section-heading {
@@ -214,11 +210,14 @@ const sections = settings?.data.landingPageSettings.links ?? [];
 
   @media (--md-n-above) {
     .content {
-      /* grid-template-columns: 1fr auto;
-      grid-template-rows: 1fr;
-      grid-template-areas:
-        "origami heading"; */
-        --_width: max(380px, 60dvw);
+      --_width: max(420px, 60dvw);
+      gap: var(--size-5);
+    }
+  }
+
+  @media (--lg-n-above) {
+    .content {
+      --_width: max(480px, 55dvw);
     }
   }
 </style>
