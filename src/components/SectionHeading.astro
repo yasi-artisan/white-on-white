@@ -74,7 +74,11 @@ const { id, sections } = Astro.props;
 
     opacity: 0.5;
     pointer-events: none;
-    transition: opacity 0.4s ease;
+    /* --morph-duration is written onto #section-heading by the page init
+       script to match the origami morph, so this crossfade spans the whole
+       transition instead of finishing while the contour is still morphing.
+       The ease mirrors morphEase (power2.inOut). Falls back pre-hydration. */
+    transition: opacity var(--morph-duration, 0.4s) cubic-bezier(0.45, 0, 0.55, 1);
 
     &::after {
       content: "";
@@ -83,7 +87,7 @@ const { id, sections } = Astro.props;
       margin-top: 0.45em;
       background-color: var(--orange-11);
       transform-origin: bottom;
-      transition: height 0.4s ease;
+      transition: height var(--morph-duration, 0.4s) cubic-bezier(0.45, 0, 0.55, 1);
     }
   }
 

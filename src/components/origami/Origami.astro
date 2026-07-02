@@ -13,12 +13,23 @@ interface Props {
 }
 
 const { id, items } = Astro.props;
+
+// Settings may enable only a subset of the full shape set, so the stage
+// renders just those shapes — in the links' order — and the page feeds the
+// matching contour list to the animation. Matching is case-insensitive
+// because settings use lowercase ids (`ostrich`) while shape labels are
+// title-cased (`Ostrich`).
+const norm = (s: string) => s.trim().toLowerCase();
+const activeShapes = items
+  .map((item) => shapes.find((s) => norm(item.shape) === norm(s.label)))
+  .filter((s): s is (typeof shapes)[number] => Boolean(s));
+const firstContour = activeShapes[0]?.contour ?? shapes[0].contour;
 ---
 
 <div class="origami" {id}>
   <div class="origami-stage">
     {
-      shapes.filter((shape) => items.some((item) => item.shape === shape.label)).map((shape, i) =>
+      activeShapes.map((shape, i) =>
         shape.hoverImage ? (
           <img
             class="origami-hover-img"
@@ -39,9 +50,9 @@ const { id, items } = Astro.props;
       role="img"
       aria-label="Origami folding animation"
     >
-      <path class="origami-contour" d={shapes[0].contour}></path>
+      <path class="origami-contour" d={firstContour}></path>
       {
-        shapes.map((shape, i) => (
+        activeShapes.map((shape, i) => (
           <g class={`origami-inner origami-inner--${i}`}>
             {shape.polygons.map((d) => (
               <path class="origami-poly" d={d} />

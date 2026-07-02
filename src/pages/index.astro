@@ -37,14 +37,24 @@ const sections = settings?.data.landingPageSettings.links ?? [];
     if (!root) return; // not on the home page
 
     const sectionsEl = root.closest<HTMLElement>("[data-sections]");
-    const sections: { label: string; href: string }[] = sectionsEl
-      ? JSON.parse(sectionsEl.dataset.sections || "[]")
-      : [];
+    const sections: { label: string; href: string; shape: string }[] =
+      sectionsEl ? JSON.parse(sectionsEl.dataset.sections || "[]") : [];
+
+    // Only morph between the shapes the landing page actually enables
+    // (settings may be a subset of the full shape set), in section order, so
+    // the loop never reaches "phantom" shapes past the last real section.
+    const contours = sections
+      .map((s) =>
+        shapes.find(
+          (x) => x.label.trim().toLowerCase() === s.shape.trim().toLowerCase(),
+        )?.contour,
+      )
+      .filter((c): c is string => typeof c === "string");
 
     // One instance, owned here, driving the stage, heading, and scrubber.
     const instance = new OrigamiAnimation(
       root,
-      shapes.map((s) => s.contour),
+      contours,
       { ...defaultConfig, pauseAfterDraw: 2.5, morphDuration: 2.5 },
     );
     anim = instance;
@@ -55,6 +65,16 @@ const sections = settings?.data.landingPageSettings.links ?? [];
         "#section-heading .heading-link",
       ),
     );
+
+    // Share the morph duration with the heading so its crossfade spans the
+    // whole transition (consumed in SectionHeading.astro via --morph-duration)
+    // instead of finishing early while the contour is still morphing.
+    document
+      .querySelector<HTMLElement>("#section-heading")
+      ?.style.setProperty(
+        "--morph-duration",
+        `${instance.cfg.morphDuration}s`,
+      );
     const scrubber = document.querySelector<HTMLInputElement>(
       "#shape-scrubber .scrubber-input",
     )!;

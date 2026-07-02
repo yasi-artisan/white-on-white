@@ -306,8 +306,10 @@ export class OrigamiAnimation {
   #appendStep(tl: gsap.core.Timeline, a: number, b: number): void {
     // Block hover during the morph+draw segment
     tl.call(() => this.#stage.classList.add("is-transitioning"));
-    // Advance active shape mid-step (after morph, before folds draw)
-    this.#transition(tl, a, b, { onMorphed: () => this.#setShape(b) });
+    // Advance the active shape the moment the contour starts morphing toward
+    // `b`, so the heading/scrubber reflect the next section at the START of
+    // the transition rather than after the morph has already landed.
+    this.#transition(tl, a, b, { onMorphStart: () => this.#setShape(b) });
     // Re-enable hover once drawing is complete
     tl.call(() => this.#stage.classList.remove("is-transitioning"));
     tl.to({}, { duration: this.cfg.pauseAfterDraw });
@@ -450,14 +452,15 @@ export class OrigamiAnimation {
    * One shape → shape step: hide `from`'s folds, morph the contour to `to`,
    * then reveal `to`'s folds. This single sequence powers both the auto-loop
    * and `goTo()`. `morphOffset` overlaps the morph with the preceding hide
-   * (used by `goTo`); `onMorphed` fires after the morph, before the `to`
-   * folds draw (used by the loop to advance the active shape mid-step).
+   * (used by `goTo`); `onMorphStart` fires the instant the contour begins
+   * morphing (used by the loop to advance the active shape at the start of
+   * each transition, so the heading crossfades in sync with the morph).
    */
   #transition(
     tl: gsap.core.Timeline,
     from: number,
     to: number,
-    opts: { morphOffset?: gsap.Position; onMorphed?: () => void } = {},
+    opts: { morphOffset?: gsap.Position; onMorphStart?: () => void } = {},
   ): void {
     this.#staggerHide(tl, this.#innerPolys[from], this.#innerGroups[from]);
 
@@ -477,6 +480,10 @@ export class OrigamiAnimation {
         morphSVG: { shape: this.contours[to] },
         duration: this.cfg.morphDuration,
         ease: this.cfg.morphEase,
+        // Advance the active shape as the contour *begins* morphing so nav
+        // (heading, hover image, scrubber baseline) tracks the transition
+        // from its first frame instead of lagging until the morph lands.
+        onStart: () => opts.onMorphStart?.(),
       },
       morphAt,
     );
@@ -499,7 +506,6 @@ export class OrigamiAnimation {
       },
       morphAt,
     );
-    if (opts.onMorphed) tl.call(opts.onMorphed);
     tl.set(this.#innerGroups[to], { visibility: "visible" });
     this.#staggerDraw(tl, this.#innerPolys[to]);
   }
