@@ -14,12 +14,23 @@ const settings = defineCollection({
         }),
       )
       .optional(),
-    footerLinks: z.array( 
-      z.object({
-        label: z.string(),
-        url: z.string(),
-      }),
-    ).optional(),
+    footerLinks: z
+      .array(
+        z.object({
+          label: z.string(),
+          url: z.string(),
+        }),
+      )
+      .optional(),
+    landingPageSettings: z.object({
+      links: z.array(
+        z.object({
+          label: z.string(),
+          href: z.string(),
+          shape: z.string(),
+        }),
+      ),
+    }),
   }),
 });
 
@@ -32,7 +43,7 @@ const pages = defineCollection({
     path: z.string(),
     gallery: z.array(z.string()).optional(),
     parents: z.array(reference("pages")).optional(),
-  })
+  }),
 });
 
 // Expose your defined collection to Astro

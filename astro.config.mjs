@@ -14,11 +14,13 @@ export default defineConfig({
       provider: fontProviders.fontshare(),
       name: "Satoshi",
       cssVariable: "--font-satoshi",
+      weights: ["400", "700"],
     },
     {
       provider: fontProviders.fontshare(),
       name: "Clash Display",
       cssVariable: "--font-display",
+      weights: ["400", "500"],
     }
   ],
 

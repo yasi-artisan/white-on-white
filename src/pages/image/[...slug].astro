@@ -63,8 +63,21 @@ const { src, alt, back, index } = Astro.props;
 
 <script>
   // Escape returns to the gallery; the reverse morph plays automatically.
-  document.addEventListener('keydown', (e) => {
-    if (e.key === "Escape") history.back();
+  // ClientRouter (View Transitions) runs a hoisted <script> only once, so the
+  // listener is wired on astro:page-load (fires on first load AND after every
+  // navigation) — but only when an image-view page is actually showing — and
+  // removed on astro:before-swap so it can't leak onto other pages.
+  const onKeydown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') history.back();
+  };
+
+  document.addEventListener('astro:page-load', () => {
+    if (document.querySelector('.image-view')) {
+      document.addEventListener('keydown', onKeydown);
+    }
+  });
+  document.addEventListener('astro:before-swap', () => {
+    document.removeEventListener('keydown', onKeydown);
   });
 </script>
 

@@ -23,12 +23,14 @@ collections:
     label_singular: Page
     folder: /src/data/pages
     extension: mdx
+    path: '{{folder}}/{{slug}}'
     fields:
       - { label: Title, name: title, widget: string }
       - { label: Subtitle, name: subtitle, widget: richtext, required: false, buttons: [bold, italic], modes: [rich_text], editor_components:[] }
       - { label: Draft, name: draft, widget: boolean, default: true }
-      - { label: Body, name: body, widget: richtext, required: false, buttons: [bold, italic, link], modes: [rich_text], editor_components:[] }
-      - { label: Path, name: path, widget: string }
+      - { label: Body, name: body, widget: richtext, required: false }
+      # - { label: Path, name: path, widget: string,   sanitize_replacement: '-', trim: true, lowercase: true },
+      - { label: Folder, name: folder, widget: string, required: false, hint: 'Use folder to organize pages.'}
       - {
           label: Cover Image,
           name: cover_image,
@@ -59,3 +61,36 @@ singletons:
           - name: url
             label: URL
             widget: string
+      - name: footerLinks
+        label: Footer Links
+        widget: list
+        fields:
+          - name: label
+            label: Label
+            widget: string
+          - name: url
+            label: URL
+            widget: string
+      - name: landingPageSettings
+        label: Landing Page Settings
+        widget: object
+        fields:
+          - name: links
+            label: Links
+            widget: list
+            fields:
+              - name: label
+                label: Label
+                widget: string
+              - name: href
+                label: URL
+                widget: string
+              - name: shape
+                label: Shape
+                widget: select
+                options:
+                  - ostrich
+                  - carmolek
+                  - squirrel
+                  - pigeon
+                  - rabbit

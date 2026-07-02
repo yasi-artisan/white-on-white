@@ -2,6 +2,7 @@
 
 interface Props {
   title: string;
+  links: FooterLinks;
 }
 
 type FooterLinks = {
@@ -10,7 +11,7 @@ type FooterLinks = {
 }[];
 
 
-const { title }: Props = Astro.props;
+const { title, links }: Props = Astro.props;
 ---
 
 <footer class="footer">
@@ -21,11 +22,10 @@ const { title }: Props = Astro.props;
   </p>
   <div class="footer-links">
     { 
-      ["GitHub", "LinkedIn", "Twitter"].map((label) => {
-        const url = `https://${label.toLowerCase()}.com/kavehrafie`;
+      links.map((link) => {
         return (
-          <a class="footer-link" href={url} target="_blank" rel="noopener">
-            {label} 
+          <a class="footer-link" href={link.url} target="_blank" rel="noopener">
+            {link.label} 
           </a>
         );
       })
@@ -36,8 +36,8 @@ const { title }: Props = Astro.props;
 
 <style lang="postcss">
   .footer {
-    padding-block: var(--size-relative-6);
-   
+    padding-block-start: var(--size-relative-12);
+    padding-block-end: var(--size-relative-6);
     display: grid;
     width: 100%;
     padding-inline: var(--size-relative-12);

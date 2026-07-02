@@ -1,6 +1,22 @@
 siteName: Yasaman Moussavi
 menuLinks:
+  - label: Home
+    url: /
   - label: About
     url: /about
-  - label: Installation
-    url: /installation
+footerLinks:
+  - label: Instagram
+    url: https://www.instagram.com/yourusername
+  - label: Contact
+    url: /contact
+landingPageSettings:
+  links:
+    - label: Installation
+      href: /installation
+      shape: ostrich
+    - label: Painting
+      href: /painting
+      shape: carmolek
+    - label: Printmaking/Papermaking
+      href: /printmaking-papermaking
+      shape: squirrel

@@ -346,7 +346,38 @@ export class OrigamiAnimation {
     tl.call(() => this.#setShape(target));
   }
 
+  /**
+   * Tear everything down: kill the GSAP timelines (the loop runs with
+   * `repeat: -1`, so without this it keeps ticking against detached DOM after a
+   * ClientRouter view-transition navigation) and drop the hover listeners. The
+   * page calls this on `astro:before-swap` when it navigates away.
+   */
+  destroy(): void {
+    this.#killTimelines();
+    this.#scrubTween?.kill();
+    this.#scrubTween = null;
+    this.#scrubSegFrom = this.#scrubSegTo = -1;
+    this.#contour.removeEventListener("pointerenter", this.#onPointerEnter);
+    this.#contour.removeEventListener("pointerleave", this.#onPointerLeave);
+    this.#listeners.clear();
+    this.#scrubListeners.clear();
+  }
+
   // -- private helpers ---------------------------------------------------
+
+  // Hover handlers are stored as fields so destroy() can remove them.
+  #onPointerEnter = (): void => {
+    this.#stage.classList.add("is-hovering");
+    this.#masterTl?.pause();
+  };
+
+  #onPointerLeave = (): void => {
+    this.#stage.classList.remove("is-hovering");
+    // Only resume if the loop wasn't killed by a manual goTo()
+    if (!this.#paused) {
+      this.#masterTl?.play();
+    }
+  };
 
   /**
    * Hover inside the contour fill area pauses the animation and shows
@@ -354,17 +385,8 @@ export class OrigamiAnimation {
    * `goTo`).
    */
   #bindPathHover(): void {
-    this.#contour.addEventListener("pointerenter", () => {
-      this.#stage.classList.add("is-hovering");
-      this.#masterTl?.pause();
-    });
-    this.#contour.addEventListener("pointerleave", () => {
-      this.#stage.classList.remove("is-hovering");
-      // Only resume if the loop wasn't killed by a manual goTo()
-      if (!this.#paused) {
-        this.#masterTl?.play();
-      }
-    });
+    this.#contour.addEventListener("pointerenter", this.#onPointerEnter);
+    this.#contour.addEventListener("pointerleave", this.#onPointerLeave);
   }
 
   #notifyListeners(): void {

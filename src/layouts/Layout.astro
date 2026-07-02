@@ -9,6 +9,7 @@ import { getEntry } from "astro:content";
 const settings = await getEntry("settings", "settings");
 const siteName = settings?.data?.siteName ?? "Yasaman Moussavi";
 const menuLinks = settings?.data?.menuLinks ?? [];
+const footerLinks = settings?.data?.footerLinks ?? [];
 ---
 
 <!doctype html>
@@ -48,7 +49,7 @@ const menuLinks = settings?.data?.menuLinks ?? [];
     </aside>
     <main>
       <slot />
-      <Footer title={siteName} />
+      <Footer title={siteName} links={footerLinks} />
     </main>
   </body>
 </html>

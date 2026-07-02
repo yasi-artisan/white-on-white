@@ -1,24 +1,18 @@
 ---
+import { getEntry } from "astro:content";
 import Origami from "../components/origami/Origami.astro";
 import SectionHeading from "../components/SectionHeading.astro";
 import ShapeScrubber from "../components/ShapeScrubber.astro";
 import Layout from "../layouts/Layout.astro";
 
-// One section per origami shape, in shape order (see origami-data.ts).
-// The label becomes the dynamic heading; the href is the page each shape
-// links to (pages aren't built yet — they'll 404 until scaffolded).
-const sections = [
-  { label: "Community Projects", href: "/community" },
-  { label: "Installations", href: "/installations" },
-  { label: "Papermaking / Printmaking", href: "/papermaking" },
-  { label: "Painting", href: "/painting" },
-  { label: "About", href: "/about" },
-];
+
+const settings = await getEntry("settings", "settings");
+const sections = settings?.data.landingPageSettings.links ?? [];
 ---
 
 <Layout>
-  <section class="content">
-    <Origami id="shape-shifter" />
+  <section class="content" data-sections={JSON.stringify(sections)}>
+    <Origami id="shape-shifter" items={sections} />
     <SectionHeading id="section-heading" sections={sections} />
     <ShapeScrubber id="shape-scrubber" sections={sections} />
   </section>
@@ -28,119 +22,141 @@ const sections = [
   import { OrigamiAnimation } from "../components/origami/origami-animation";
   import { shapes, defaultConfig } from "../components/origami/origami-data";
 
-  // Must match the `sections` array in the frontmatter above.
-  const sections = [
-    { label: "Community Projects", href: "/community" },
-    { label: "Installations", href: "/installations" },
-    { label: "Papermaking / Printmaking", href: "/papermaking" },
-    { label: "Painting", href: "/painting" },
-    { label: "About", href: "/about" },
-  ];
+  // ClientRouter (View Transitions) runs a bundled <script> only once — on the
+  // first page load — so a soft navigation back to / would leave the stage
+  // inert. astro:page-load fires on first load AND after every navigation, so we
+  // (re)initialise there, guarded by the home page's signature element. The GSAP
+  // loop runs `repeat: -1`, so we tear it down on astro:before-swap to keep it
+  // from ticking against detached DOM between visits. `sections` is read from a
+  // data attribute (serialised from the same settings entry as the markup) so
+  // this module stays bundled and cached rather than re-inlined per render.
+  let anim: OrigamiAnimation | null = null;
 
-  // One instance, owned here, driving the stage, heading, and scrubber.
-  const anim = new OrigamiAnimation(
-    document.querySelector("#shape-shifter")!,
-    shapes.map((s) => s.contour),
-    { ...defaultConfig, pauseAfterDraw: 2.5, morphDuration: 2.5 },
-  );
-  anim.startLoop();
+  const initHome = () => {
+    const root = document.querySelector<HTMLElement>("#shape-shifter");
+    if (!root) return; // not on the home page
 
-  const headingLinks = Array.from(
-    document.querySelectorAll<HTMLAnchorElement>(
-      "#section-heading .heading-link",
-    ),
-  );
-  const scrubber = document.querySelector<HTMLInputElement>(
-    "#shape-scrubber .scrubber-input",
-  )!;
-  const thumb = document.querySelector<SVGSVGElement>(
-    "#shape-scrubber .scrubber-thumb",
-  )!;
+    const sectionsEl = root.closest<HTMLElement>("[data-sections]");
+    const sections: { label: string; href: string }[] = sectionsEl
+      ? JSON.parse(sectionsEl.dataset.sections || "[]")
+      : [];
 
-  // Visit the page for whatever shape is currently on screen.
-  const goToSection = (index: number) => {
-    const href = sections[index]?.href;
-    if (href) window.location.href = href;
-  };
+    // One instance, owned here, driving the stage, heading, and scrubber.
+    const instance = new OrigamiAnimation(
+      root,
+      shapes.map((s) => s.contour),
+      { ...defaultConfig, pauseAfterDraw: 2.5, morphDuration: 2.5 },
+    );
+    anim = instance;
+    instance.startLoop();
 
-  // Clicking inside the drawn contour visits the current section's page.
-  const contour = document.querySelector<SVGPathElement>(
-    "#shape-shifter .origami-contour",
-  );
-  contour?.addEventListener("click", () => goToSection(anim.currentShape));
+    const headingLinks = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>(
+        "#section-heading .heading-link",
+      ),
+    );
+    const scrubber = document.querySelector<HTMLInputElement>(
+      "#shape-scrubber .scrubber-input",
+    )!;
+    const thumb = document.querySelector<SVGSVGElement>(
+      "#shape-scrubber .scrubber-thumb",
+    )!;
 
-  // The slider is a true scrubber: dragging morphs the contour in real time
-  // (folds hidden while between shapes); releasing eases onto the nearest
-  // stage and only then draws that stage's folds.
-  const maxStage = sections.length - 1;
-  let dragging = false;
+    // Visit the page for whatever shape is currently on screen.
+    const goToSection = (index: number) => {
+      const href = sections[index]?.href;
+      if (href) window.location.href = href;
+    };
 
-  const placeThumb = (v: number) => thumb.style.setProperty("--pos", String(v));
+    // Clicking inside the drawn contour visits the current section's page.
+    const contour = document.querySelector<SVGPathElement>(
+      "#shape-shifter .origami-contour",
+    );
+    contour?.addEventListener("click", () => goToSection(instance.currentShape));
 
-  scrubber.addEventListener("pointerdown", () => {
-    dragging = true;
-  });
+    // The slider is a true scrubber: dragging morphs the contour in real time
+    // (folds hidden while between shapes); releasing eases onto the nearest
+    // stage and only then draws that stage's folds.
+    const maxStage = sections.length - 1;
+    let dragging = false;
 
-  scrubber.addEventListener("input", () => {
-    const v = Number(scrubber.value);
-    placeThumb(v);
-    anim.scrubTo(v);
-  });
+    const placeThumb = (v: number) =>
+      thumb.style.setProperty("--pos", String(v));
 
-  scrubber.addEventListener("change", () => {
-    const releaseValue = Number(scrubber.value);
-    const target = Math.max(0, Math.min(maxStage, Math.round(releaseValue)));
-    scrubber.value = String(target);
-    dragging = false;
-    // The pill eases onto `target` via onScrub during the commit — no snap.
-    anim.commitScrub(target, releaseValue);
-  });
+    scrubber.addEventListener("pointerdown", () => {
+      dragging = true;
+    });
 
-  // Keyboard: arrow keys jump a whole stage (the native 0.01 step is too fine),
-  // easing onto each step and drawing its folds.
-  scrubber.addEventListener("keydown", (e) => {
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    e.preventDefault();
-    const fromValue = Math.round(Number(scrubber.value));
-    const dir = e.key === "ArrowRight" ? 1 : -1;
-    const target = Math.max(0, Math.min(maxStage, fromValue + dir));
-    scrubber.value = String(target);
-    dragging = false;
-    anim.commitScrub(target, fromValue);
-  });
+    scrubber.addEventListener("input", () => {
+      const v = Number(scrubber.value);
+      placeThumb(v);
+      instance.scrubTo(v);
+    });
 
-  // The thumb follows the scrub position — during the auto-loop's morphs and
-  // while a commit eases onto its target. Only the user's own drag drives the
-  // thumb directly (via `input`), so leave it alone then. The thumb mirrors
-  // whenever the loop is on its return leg (scrub value decreasing); we skip
-  // that check during a commit so the ease direction can't trigger a flip.
-  let prevScrub = 0;
-  anim.onScrub((v) => {
-    if (dragging) return;
-    placeThumb(v);
-    if (anim.isTransitioning) {
+    scrubber.addEventListener("change", () => {
+      const releaseValue = Number(scrubber.value);
+      const target = Math.max(0, Math.min(maxStage, Math.round(releaseValue)));
+      scrubber.value = String(target);
+      dragging = false;
+      // The pill eases onto `target` via onScrub during the commit — no snap.
+      instance.commitScrub(target, releaseValue);
+    });
+
+    // Keyboard: arrow keys jump a whole stage (the native 0.01 step is too fine),
+    // easing onto each step and drawing its folds.
+    scrubber.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      const fromValue = Math.round(Number(scrubber.value));
+      const dir = e.key === "ArrowRight" ? 1 : -1;
+      const target = Math.max(0, Math.min(maxStage, fromValue + dir));
+      scrubber.value = String(target);
+      dragging = false;
+      instance.commitScrub(target, fromValue);
+    });
+
+    // The thumb follows the scrub position — during the auto-loop's morphs and
+    // while a commit eases onto its target. Only the user's own drag drives the
+    // thumb directly (via `input`), so leave it alone then. The thumb mirrors
+    // whenever the loop is on its return leg (scrub value decreasing); we skip
+    // that check during a commit so the ease direction can't trigger a flip.
+    let prevScrub = 0;
+    instance.onScrub((v) => {
+      if (dragging) return;
+      placeThumb(v);
+      if (instance.isTransitioning) {
+        prevScrub = v;
+        return;
+      }
+      if (v < prevScrub - 0.001) thumb.classList.add("is-flipped");
+      else if (v > prevScrub + 0.001) thumb.classList.remove("is-flipped");
       prevScrub = v;
-      return;
-    }
-    if (v < prevScrub - 0.001) thumb.classList.add("is-flipped");
-    else if (v > prevScrub + 0.001) thumb.classList.remove("is-flipped");
-    prevScrub = v;
-  });
+    });
 
-  // Discrete: swap the visible heading + keep the input's value baseline
-  // correct for keyboard use.
-  const sync = () => {
-    const current = anim.currentShape;
-    for (const link of headingLinks) {
-      link.classList.toggle(
-        "is-active",
-        Number(link.dataset.shapeIndex) === current,
-      );
-    }
-    if (scrubber.value !== String(current)) scrubber.value = String(current);
+    // Discrete: swap the visible heading + keep the input's value baseline
+    // correct for keyboard use.
+    const sync = () => {
+      const current = instance.currentShape;
+      for (const link of headingLinks) {
+        link.classList.toggle(
+          "is-active",
+          Number(link.dataset.shapeIndex) === current,
+        );
+      }
+      if (scrubber.value !== String(current))
+        scrubber.value = String(current);
+    };
+
+    instance.onChange(sync);
   };
 
-  anim.onChange(sync);
+  const destroyHome = () => {
+    anim?.destroy();
+    anim = null;
+  };
+
+  document.addEventListener("astro:page-load", initHome);
+  document.addEventListener("astro:before-swap", destroyHome);
 </script>
 
 <style lang="postcss">

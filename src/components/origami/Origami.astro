@@ -5,15 +5,20 @@ import { shapes } from "./origami-data";
 
 interface Props {
   id: string;
+  items: {
+    label: string;
+    href: string;
+    shape: string;
+  }[]
 }
 
-const { id } = Astro.props;
+const { id, items } = Astro.props;
 ---
 
 <div class="origami" {id}>
   <div class="origami-stage">
     {
-      shapes.map((shape, i) =>
+      shapes.filter((shape) => items.some((item) => item.shape === shape.label)).map((shape, i) =>
         shape.hoverImage ? (
           <img
             class="origami-hover-img"
