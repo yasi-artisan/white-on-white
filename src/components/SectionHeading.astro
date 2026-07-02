@@ -1,7 +1,4 @@
 ---
-// Dynamic section title. All titles share one grid cell; only the title whose
-// index matches the currently-visible origami shape is shown (and is a real
-// link to that section's page). The page toggles `.is-active` as shapes morph.
 export interface Section {
   label: string;
   href: string;
@@ -32,24 +29,19 @@ const { id, sections } = Astro.props;
 </header>
 
 <style lang="postcss">
+  @import "open-props/media.min.css";
 
-@import "open-props/media.min.css";
   .section-heading {
     width: 100%;
     display: grid;
     place-items: center;
-    text-align: center;
   }
 
-  /* One grid cell shared by every title → they stack and the cell sizes to
-     the tallest, so the layout never jumps as the active title changes. */
   .heading-stack {
     display: flex;
     flex-direction: column;
-    align-items: flex-start; /* mobile: labels hug the left edge */
-    width: 100%;
-    min-height: 4em;
-    gap: 0.8em;
+    align-items: flex-start;
+    gap: 0.5em;
   }
 
   .heading-link {
@@ -58,41 +50,20 @@ const { id, sections } = Astro.props;
     font-weight: 500;
     letter-spacing: 0.18em;
     text-decoration: none;
-    color: inherit;
-
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-end;
-    text-align: left;
+    color: light-dark(var(--gray-9), var(--gray-2));
     text-wrap: balance;
     line-height: 1.3;
     max-width: 15ch;
-    padding-inline: 0.35em;
 
-    opacity: 0.5;
+    opacity: 0.4;
     pointer-events: none;
     transition: opacity var(--morph-duration, 0.4s) cubic-bezier(0.45, 0, 0.55, 1);
-
-    &::after {
-      content: "";
-      width: 2px;
-      height: 2.4em;
-      margin-top: 0.45em;
-      background-color: var(--orange-11);
-      transform-origin: bottom;
-      transform: scaleY(0.25);
-      transition: transform var(--morph-duration, 0.4s) cubic-bezier(0.45, 0, 0.55, 1);
-    }
   }
 
   .heading-link.is-active {
     opacity: 1;
     pointer-events: auto;
-
-    &::after {
-      transform: scaleY(1);
-    }
+    font-weight: 600;
   }
 
   .heading-link:hover {
@@ -104,7 +75,8 @@ const { id, sections } = Astro.props;
     .heading-stack {
       flex-direction: row;
       align-items: flex-end;
-      gap: 1em;
+      justify-content: center;
+      gap: 1.25em;
     }
   }
 </style>
