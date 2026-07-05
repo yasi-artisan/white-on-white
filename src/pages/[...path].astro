@@ -20,7 +20,7 @@ export async function getStaticPaths() {
       .filter((p) => p.data.parent === page.id && p.id !== page.id)
       .map((p) => tree.get(p.id)!)
       .sort((a, b) => a.title.localeCompare(b.title))
-      .map((n) => ({ title: n.title, href: n.route }));
+      .map((n) => ({ title: n.title, href: n.route, subtitle: n.subtitle }));
 
     return {
       params: { path: node.route.replace(/^\//, '') },
@@ -38,7 +38,7 @@ interface Props {
   page: CollectionEntry<'pages'>;
   route: string;
   ancestors: Ancestor[];
-  children: { title: string; href: string }[];
+  children: { title: string; href: string; subtitle?: string }[];
 }
 
 const { page, route, ancestors, children }: Props = Astro.props;
@@ -70,19 +70,18 @@ const isShow = page.data.template === "show";
 
     {isShow && gallery.length > 0 && <Gallery images={gallery} pagePath={route} alt={page.data.title} />}
 
-    {isShow && (
+
       <div class="page__body">
         <Content />
       </div>
-    )}
+  
 
     {children.length > 0 && (
       <nav class="page__children">
-        <h2 class="page__children-title">Pages</h2>
         <ul class="page__children-list">
           {children.map((child) => (
             <li>
-              <a href={child.href}>{child.title}</a>
+              <a href={child.href}>{child.title}{child.subtitle && <span> — {child.subtitle}</span>}</a>
             </li>
           ))}
         </ul>
@@ -109,8 +108,7 @@ const isShow = page.data.template === "show";
   .page__title {
     margin: 0;
     text-align: center;
-    text-transform: uppercase;
-    font-weight: 700;
+    font-weight: 500;
     letter-spacing: 0.15em;
     padding-block: var(--size-3);
     font-family: var(--font-heading);
@@ -152,6 +150,7 @@ const isShow = page.data.template === "show";
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+
   }
 
   .page__crumbs-item {
@@ -200,7 +199,7 @@ const isShow = page.data.template === "show";
 
     a {
       font-family: var(--font-body);
-      font-size: var(--font-size-1);
+      font-size: var(--font-size-3);
       text-decoration: underline;
       text-underline-offset: 0.2em;
     }

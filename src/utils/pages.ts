@@ -12,6 +12,10 @@ export interface PageNode {
   route: string;
   /** Root-first ancestor chain (excludes self), for breadcrumbs. */
   ancestors: Ancestor[];
+  subtitle?: string;
+  cover_image?: string;
+  gallery?: string[];
+  template?: 'index' | 'show';
 }
 
 /**
@@ -43,7 +47,7 @@ export function buildPageTree(
       return orphan;
     }
 
-    const parentId = entry.data.parent;
+    const { title, subtitle, cover_image, gallery, template, parent: parentId } = entry.data;
     let route: string;
     let ancestors: Ancestor[];
 
@@ -64,7 +68,7 @@ export function buildPageTree(
       ancestors = [];
     }
 
-    const node: PageNode = { id, title: entry.data.title, route, ancestors };
+    const node: PageNode = { id, title, route, ancestors, subtitle, cover_image, gallery, template };
     nodes.set(id, node);
     return node;
   };
