@@ -77,6 +77,9 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     border-right: 1px solid var(--border-color);
     overflow: hidden;
     position: relative;
+    max-height: 100vh;
+    position: sticky;
+    top: 0;
 
     &::after, &::before {
       content: "";
