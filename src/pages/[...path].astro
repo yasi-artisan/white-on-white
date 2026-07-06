@@ -1,17 +1,17 @@
 ---
-import { getCollection, render } from 'astro:content';
-import type { CollectionEntry } from 'astro:content';
-import Layout from '@/layouts/Layout.astro';
-import Gallery from '@/components/Gallery.astro';
-import { inlineMarkdown } from '@/utils/markdown';
-import { buildPageTree, type Ancestor } from '@/utils/pages';
-import Breadcrumb from '@/components/breadcrumb.astro';
+import { getCollection, render } from "astro:content";
+import type { CollectionEntry } from "astro:content";
+import Layout from "@/layouts/Layout.astro";
+import Gallery from "@/components/Gallery.astro";
+import { inlineMarkdown } from "@/utils/markdown";
+import { buildPageTree, type Ancestor } from "@/utils/pages";
+import Breadcrumb from "@/components/breadcrumb.astro";
 
 // Pages are flat files (title → slug); URL nesting is virtual, derived from each
 // page's optional `parent` relation. A chain grandparent → parent → child
 // produces /grandparent/parent/child, a breadcrumb, and a sub-page list.
 export async function getStaticPaths() {
-  const pages = await getCollection('pages', (page) => !page.data.draft);
+  const pages = await getCollection("pages", (page) => !page.data.draft);
   const tree = buildPageTree(pages);
 
   return pages.map((page) => {
@@ -24,7 +24,7 @@ export async function getStaticPaths() {
       .map((n) => ({ title: n.title, href: n.route, subtitle: n.subtitle }));
 
     return {
-      params: { path: node.route.replace(/^\//, '') },
+      params: { path: node.route.replace(/^\//, "") },
       props: {
         page,
         route: node.route,
@@ -36,7 +36,7 @@ export async function getStaticPaths() {
 }
 
 interface Props {
-  page: CollectionEntry<'pages'>;
+  page: CollectionEntry<"pages">;
   route: string;
   ancestors: Ancestor[];
   children: { title: string; href: string; subtitle?: string }[];
@@ -52,32 +52,56 @@ const isShow = page.data.template === "show";
 
 <Layout>
   <article class="page">
-    
+    <Breadcrumb {ancestors} currentPageTitle={page.data.title} />
 
-      <Breadcrumb {ancestors} currentPageTitle={page.data.title} />
+    <header class:list={["page__header", {"page__header--show": isShow}]}>
+      <h1
+        class="page__title"
+        style={`view-transition-name: title-${route.replace(/^\/|\/$/g, "").replace(/\//g, "-")}`}
+      >
+        {page.data.title}
+      </h1>
+      {
+        isShow && subtitleHtml && (
+          <div
+            class="page__subtitle"
+            style={`view-transition-name: subtitle-${route.replace(/^\/|\/$/g, "").replace(/\//g, "-")}`}
+            set:html={subtitleHtml}
+          />
+        )
+      }
+    </header>
 
-    {isShow && subtitleHtml && <span class="page__subtitle" set:html={subtitleHtml} />}
-    <h1 class="page__title">{page.data.title}</h1>
+    {
+      isShow && gallery.length > 0 && (
+        <Gallery images={gallery} pagePath={route} alt={page.data.title} />
+      )
+    }
+    <div class="page__body">
+      <Content />
+    </div>
 
-    {isShow && gallery.length > 0 && <Gallery images={gallery} pagePath={route} alt={page.data.title} />}
-
-
-      <div class="page__body">
-        <Content />
-      </div>
-  
-
-    {children.length > 0 && (
-      <nav class="page__children">
-        <ul class="page__children-list">
-          {children.map((child) => (
-            <li>
-              <a href={child.href}>{child.title}{child.subtitle && <span set:html={inlineMarkdown(child.subtitle)}></span>}</a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    )}
+    {
+      children.length > 0 && (
+        <nav class="page__children">
+          <ul class="page__children-list">
+            {children.map((child) => {
+              const slug = child.href.replace(/^\/|\/$/g, "").replace(/\//g, "-");
+              return (
+                <li>
+                  <a href={child.href}>
+                    <span class="child__title" style={`view-transition-name: title-${slug}`}>{child.title}</span>
+                    {child.subtitle && (
+                      <span style={`view-transition-name: subtitle-${slug}`} set:html={inlineMarkdown(child.subtitle)} />
+                    )}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      )
+    }
   </article>
 </Layout>
 
@@ -96,7 +120,18 @@ const isShow = page.data.template === "show";
     align-items: center;
   }
 
-
+  .page__header {
+    display: flex;
+    /* flex-direction: column; */
+    gap: var(--size-2);
+    align-items: center;
+    justify-content: center;
+    .page-header--show {
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    width: 100%;
+  }
   .page__title {
     margin: 0;
     text-align: center;
@@ -112,7 +147,7 @@ const isShow = page.data.template === "show";
     margin: 0;
     text-align: center;
     font-family: var(--font-body);
-    font-size: var(--size-2);
+    font-size: var(--size-4) !important;
     max-width: 45ch;
     line-height: 1.6;
   }
@@ -164,13 +199,22 @@ const isShow = page.data.template === "show";
       font-size: var(--font-size-3);
       text-decoration: none;
       display: inline-flex;
-      gap: var(--size-3);
+      gap: var(--size-12);
       align-items: center;
       justify-content: space-between;
+      margin: auto;
       
+      &:hover {
+        text-decoration: underline;
+      }
+
       span {
         font-size: var(--font-size-2);
         color: light-dark(var(--gray-6), var(--gray-6));
+      }
+      .child__title {
+        font-weight: 700;
+        
       }
     }
   }
