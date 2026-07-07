@@ -19,10 +19,10 @@ media_libraries:
     config:
       max_file_size: 1024000 # default: Infinity
       slugify_filename: true # default: false
-  cloudinary:
-    config:
-      cloud_name: dgpqqcuyf
-      api_key: 447547158277739
+  # cloudinary:
+  #   config:
+  #     cloud_name: dgpqqcuyf
+  #     api_key: 447547158277739
 
 collections:
   # Files are flat under src/data/pages (title → slug → filename). URL nesting is
@@ -53,6 +53,7 @@ collections:
         name: parent
         widget: relation
         collection: pages
+        multiple: true
         value_field: "{{slug}}"
         display_fields: [title]
         search_fields: [title]
@@ -86,23 +87,15 @@ collections:
                 default: subtitle,
               },
             ],
+          default: { order: desc, by: subtitle },
         }
-      - {
-          label: Subtitle,
-          name: subtitle,
-          widget: markdown,
-          required: false,
-          buttons: [bold, italic],
-          modes: [rich_text],
-          editor_components: [],
-        }
+      - { label: Subtitle, name: subtitle, widget: string, required: false }
       - { label: Draft, name: draft, widget: boolean, default: true }
-      - { label: Body, name: body, widget: markdown, required: false }
+      - { label: Body, name: body, widget: richtext, required: false }
       - {
           label: Cover Image,
           name: cover_image,
           widget: image,
-          media_library: cloudinary,
           required: false,
         }
       - {

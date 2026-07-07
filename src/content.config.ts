@@ -52,8 +52,8 @@ const pages = defineCollection({
     gallery: z.array(z.string()).optional(),
     sort: z
       .object({
-        field: z.enum(["title", "subtitle"]).default("subtitle"),
-        order: z.enum(["asc", "desc"]).default("desc"),
+        by: z.enum(["title", "subtitle"]).default("subtitle").optional(),
+        order: z.enum(["asc", "desc"]).default("desc").optional(),
       })
       .optional(),
   }),

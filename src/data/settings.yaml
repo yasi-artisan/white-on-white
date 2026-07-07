@@ -2,11 +2,17 @@ siteName: Yasaman Moussavi
 menuLinks:
   - label: Home
     url: /
+  - label: Installation
+    url: /installation
+  - label: Papermaking/Printmaking
+    url: /paper-print
+  - label: Community Projects
+    url: /community
   - label: About
     url: /about
 footerLinks:
   - label: Instagram
-    url: https://www.instagram.com/yourusername
+    url: https://www.instagram.com/yasi_moussavi/
   - label: Contact
     url: /contact
 landingPageSettings:
@@ -20,3 +26,6 @@ landingPageSettings:
     - label: Printmaking/Papermaking
       href: /printmaking-papermaking
       shape: squirrel
+    - label: Community Projects
+      href: /community
+      shape: pigeon
