@@ -181,10 +181,55 @@ const footerLinks = settings?.data?.footerLinks ?? [];
 </style>
 
 <script>
-  // Gallery → image morph: the destination <img> can still be decoding when the
-  // view transition snapshots the "new" page, which collapses its box and makes
-  // it snap in. The View Transitions API awaits the swap callback, so we await
-  // the image's decode there — the snapshot is then taken with it laid out.
+  // Gallery → image morph: on a cold first visit the detail image isn't cached
+  // when the view transition snapshots the incoming page, and rendering is
+  // frozen inside the startViewTransition update callback — so the image can't
+  // load/lay out in time, its box renders 0×0, and the tile shrinks to nothing.
+  //
+  // Fix: preload the destination detail image BEFORE the transition starts.
+  // astro:before-preparation runs while the page still renders normally, its
+  // `loader` is awaitable, and `newDocument` holds the parsed destination — so
+  // we wrap the loader to preload every source (src + srcset) once the HTML is
+  // fetched. By swap time the bytes are cached and the new-state snapshot sees
+  // the image at full size. The decode-await in the swap is a cheap fallback
+  // for an already-complete image.
+  const preloadSources = (img: HTMLImageElement) => {
+    const urls = new Set<string>();
+    const src = img.getAttribute("src");
+    if (src) urls.add(src);
+    for (const part of (img.getAttribute("srcset") ?? "").split(",")) {
+      const url = part.trim().split(/\s+/)[0];
+      if (url) urls.add(url);
+    }
+    return Promise.all(
+      [...urls].map(
+        (url) =>
+          new Promise<void>((resolve) => {
+            const pre = new Image();
+            pre.decoding = "async";
+            pre.onload = () => resolve();
+            pre.onerror = () => resolve();
+            pre.src = url;
+          }),
+      ),
+    );
+  };
+
+  document.addEventListener("astro:before-preparation", (event) => {
+    const e = event as unknown as {
+      loader: () => Promise<void>;
+      newDocument?: Document | null;
+    };
+    const originalLoader = e.loader;
+    e.loader = async () => {
+      await originalLoader();
+      const img = e.newDocument?.querySelector<HTMLImageElement>(
+        "img.image-view__img",
+      );
+      if (img) await preloadSources(img);
+    };
+  });
+
   document.addEventListener("astro:before-swap", (event) => {
     const e = event as unknown as { swap: () => void };
     const originalSwap = e.swap;

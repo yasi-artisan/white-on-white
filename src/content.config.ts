@@ -50,6 +50,12 @@ const pages = defineCollection({
     parent: z.string().nullish(),
     cover_image: z.string().optional(),
     gallery: z.array(z.string()).optional(),
+    sort: z
+      .object({
+        field: z.enum(["title", "subtitle"]).default("subtitle"),
+        order: z.enum(["asc", "desc"]).default("desc"),
+      })
+      .optional(),
   }),
 });
 

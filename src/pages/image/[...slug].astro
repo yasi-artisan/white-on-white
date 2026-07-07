@@ -1,6 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
 import Layout from '@/layouts/Layout.astro';
+import ResponsiveImage from '@/components/ResponsiveImage.astro';
+import { DETAIL_WIDTHS, DETAIL_SIZES, cloudinaryDimensions } from '@/utils/image';
 import { buildPageTree } from '@/utils/pages';
 
 // One route per gallery image across all published pages:
@@ -48,6 +50,18 @@ interface Props {
 }
 
 const { src, alt, back, index } = Astro.props;
+// Intrinsic dims (build-time) so the <img> reserves its box before load —
+// keeps the view-transition snapshot correct on a cold first visit.
+const dims = await cloudinaryDimensions(src);
+
+// Morph name shared with the gallery tile of the same index. The global
+// override below hides the outgoing snapshot and pins the incoming one at full
+// opacity, so the image resizes + repositions as a single solid frame instead
+// of cross-fading into a translucent ghost of itself.
+const vtName = `gallery-${index}`;
+const vtCss =
+  `::view-transition-old(${vtName}){animation:none;opacity:0}` +
+  `::view-transition-new(${vtName}){animation:none;opacity:1}`;
 ---
 
 <Layout>
@@ -55,11 +69,16 @@ const { src, alt, back, index } = Astro.props;
     <a class="image-view__back" href={back}>← Back</a>
 
     <a class="image-view__stage" href={back} aria-label="Close image">
-      <img
+      <ResponsiveImage
         class="image-view__img"
         src={src}
         alt={alt}
-        style={`view-transition-name: gallery-${index}`}
+        widths={DETAIL_WIDTHS}
+        sizes={DETAIL_SIZES}
+        dims={dims}
+        loading="eager"
+        decoding="async"
+        style={`view-transition-name: ${vtName}`}
       />
     </a>
   </article>
@@ -111,10 +130,16 @@ const { src, alt, back, index } = Astro.props;
     line-height: 0;
   }
 
-  .image-view__img {
+  /* `:global()` — the <img> is rendered by ResponsiveImage (child component),
+     so the scoped cid wouldn't reach it. `.image-view__stage` is in this template. */
+  .image-view__stage :global(.image-view__img) {
     max-width: 100%;
     max-height: 80dvh;
     object-fit: contain;
     border-radius: var(--radius-2);
   }
 </style>
+
+{/* Global so the view-transition pseudo-elements aren't scope-rewritten.
+    Active on the forward navigation (this is the incoming document). */}
+<style is:global set:html={vtCss} />

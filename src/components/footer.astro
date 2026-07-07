@@ -1,5 +1,4 @@
 ---
-
 interface Props {
   title: string;
   links: FooterLinks;
@@ -10,27 +9,28 @@ type FooterLinks = {
   url: string;
 }[];
 
-
 const { title, links }: Props = Astro.props;
 ---
 
 <footer class="footer">
-  <div class="site-title">{title}</div>
+  <a class="site-title" href="/">{title}</a>
   <p class="acknowledgment">
     Developed with ❤️ by Kaveh Rafie
     <!-- <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> -->
   </p>
   <div class="footer-links">
-    { 
+    {
       links.map((link) => {
         return (
           <a class="footer-link" href={link.url} target="_blank" rel="noopener">
-            {link.label} 
+            {link.label}
           </a>
         );
       })
     }
-    {/* <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> */}
+    {
+      /* <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> */
+    }
   </div>
 </footer>
 
@@ -59,6 +59,7 @@ const { title, links }: Props = Astro.props;
     color: light-dark(var(--gray-8), var(--gray-6));
     border-bottom: 1px solid light-dark(var(--gray-2), var(--gray-8));
     padding-block-end: var(--size-2);
+    text-decoration: none;
   }
 
   .footer-links {

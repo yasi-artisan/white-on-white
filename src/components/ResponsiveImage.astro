@@ -1,0 +1,124 @@
+---
+import { Image } from 'astro:assets';
+import {
+  classifyImage,
+  cloudinarySrc,
+  cloudinarySrcset,
+  resolveLocalImage,
+  GALLERY_SRC_WIDTH,
+} from '@/utils/image';
+
+/**
+ * One image entry point for every origin the CMS can store.
+ *
+ * Dispatches on `classifyImage(src)`:
+ * - cloudinary → astro-cloudinary `getCldImageUrl`. With `widths` it builds a
+ *   responsive srcset (f_auto,q_auto); without `widths` a single right-sized
+ *   `src` (tiles share the 800w bitmap with the detail view's srcset so the
+ *   view-transition morph stays cached on back-nav). No width/height imposed,
+ *   so the masonry's `height:auto` keeps each tile's true aspect.
+ * - local → Astro `<Image>` over a `src/assets/media` asset (optimized at
+ *   build). Falls back to a plain `<img>` if the file isn't glob-resolvable.
+ * - remote → plain `<img>`. Swap in `<Image inferSize>` once the host is
+ *   allow-listed via `image.remotePatterns` in astro.config.
+ *
+ * `class` and `style` (which carries `view-transition-name`) are forwarded on
+ * every branch, so the existing morph + decode-await need no changes.
+ */
+interface Props {
+  src: string;
+  alt: string;
+  class?: string;
+  /** Inline style — threads `view-transition-name` onto the `<img>`. */
+  style?: string;
+  /** Source widths for a responsive srcset. Omit for a single right-sized src. */
+  widths?: readonly number[];
+  /** `sizes` attribute (only meaningful with `widths`). */
+  sizes?: string;
+  /** Width for single-src mode (cloudinary); default GALLERY_SRC_WIDTH. */
+  width?: number;
+  /**
+   * Intrinsic dimensions (from cloudinaryDimensions at build) — emitted as
+   * width/height attributes so the box (aspect-ratio) is reserved before load,
+   * keeping the view-transition snapshot correct on a cold first visit.
+   */
+  dims?: { width: number; height: number };
+  loading?: 'lazy' | 'eager';
+  decoding?: 'async' | 'sync' | 'auto';
+}
+
+const {
+  src,
+  alt,
+  class: className,
+  style,
+  widths,
+  sizes,
+  width = GALLERY_SRC_WIDTH,
+  dims,
+  loading = 'lazy',
+  decoding = 'async',
+} = Astro.props;
+
+const kind = classifyImage(src);
+const useSrcset = !!widths && widths.length > 0;
+
+// Cloudinary: srcset when widths given, else a single right-sized src.
+let cldSrc = '';
+let cldSrcset: string | undefined;
+if (kind === 'cloudinary') {
+  cldSrc = useSrcset
+    ? cloudinarySrc(src, widths![widths!.length - 1])
+    : cloudinarySrc(src, width);
+  cldSrcset = useSrcset ? cloudinarySrcset(src, widths!) : undefined;
+}
+
+// Local: resolve to Astro ImageMetadata; undefined means it isn't importable.
+const localMeta = kind === 'local' ? resolveLocalImage(src) : undefined;
+if (kind === 'local' && !localMeta) {
+  console.warn(
+    `[ResponsiveImage] local image not found under src/assets/media: ${src}. ` +
+      'Falling back to an unoptimized <img>. Move the file into src/assets/media ' +
+      'to enable optimization.',
+  );
+}
+---
+
+{kind === 'cloudinary' && (
+  <img
+    class={className}
+    style={style}
+    src={cldSrc}
+    srcset={cldSrcset}
+    sizes={useSrcset ? sizes : undefined}
+    width={dims?.width}
+    height={dims?.height}
+    alt={alt}
+    loading={loading}
+    decoding={decoding}
+  />
+)}
+
+{kind === 'local' && localMeta && (
+  <Image
+    class={className}
+    style={style}
+    src={localMeta}
+    widths={widths ? [...widths] : undefined}
+    sizes={sizes}
+    alt={alt}
+    loading={loading}
+    decoding={decoding}
+  />
+)}
+
+{(kind === 'remote' || (kind === 'local' && !localMeta)) && (
+  <img
+    class={className}
+    style={style}
+    src={src}
+    alt={alt}
+    loading={loading}
+    decoding={decoding}
+  />
+)}

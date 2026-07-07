@@ -4,7 +4,14 @@ backend:
   repo: yasi-artisan/white-on-white
   branch: main
 
-media_folder: /public/media
+# media_folder is where uploads are written (src/ so Astro's <Image> optimizer
+# processes them at build — files in public/ are served as-is and skipped).
+# public_folder is the conventional /media path stored in frontmatter;
+# resolveLocalImage() in src/utils/image.ts bridges /media/<name> → src/assets/media/<name>.
+# Caveat: in-admin previews expect a live /media URL, so local-image previews in
+# Sveltia may not render (publish output is unaffected). Cloudinary uploads
+# (cover_image) are absolute URLs and unaffected.
+media_folder: /src/assets/media
 public_folder: /media
 
 media_libraries:
@@ -33,24 +40,64 @@ collections:
     folder: /src/data/pages
     extension: mdx
     fields:
-      - { label: Template, name: template, widget: select, options: [index, show], default: show, hint: 'index = a listing page that shows its child pages (Body/Gallery are ignored — leave them empty); show = a regular content page.' }
+      - {
+          label: Template,
+          name: template,
+          widget: select,
+          options: [index, show],
+          default: show,
+          hint: "index = a listing page that shows its child pages (Body/Gallery are ignored — leave them empty); show = a regular content page.",
+        }
       - { label: Title, name: title, widget: string }
       - label: Parent page
         name: parent
         widget: relation
         collection: pages
-        value_field: '{{slug}}'
+        value_field: "{{slug}}"
         display_fields: [title]
         search_fields: [title]
         required: false
-        hint: 'Optional parent page. Nests this page under it (→ /<parent>/.../<this>) and drives the breadcrumb + sub-page list. Leave blank for a top-level page.'
+        hint: "Optional parent page. Nests this page under it (→ /<parent>/.../<this>) and drives the breadcrumb + sub-page list. Leave blank for a top-level page."
         filters:
           - field: slug
-            values: ['{{slug}}']
+            values: ["{{slug}}"]
             exclude: true
-      - { label: Subtitle, name: subtitle, widget: richtext, required: false, buttons: [bold, italic], modes: [rich_text], editor_components: [] }
+      - {
+          label: Sort,
+          name: sort,
+          widget: object,
+          required: false,
+          fields:
+            [
+              {
+                label: Sort Order,
+                name: order,
+                widget: select,
+                options: [asc, desc],
+                required: false,
+                default: desc,
+              },
+              {
+                label: Sort By,
+                name: by,
+                widget: select,
+                options: [title, subtitle],
+                required: false,
+                default: subtitle,
+              },
+            ],
+        }
+      - {
+          label: Subtitle,
+          name: subtitle,
+          widget: markdown,
+          required: false,
+          buttons: [bold, italic],
+          modes: [rich_text],
+          editor_components: [],
+        }
       - { label: Draft, name: draft, widget: boolean, default: true }
-      - { label: Body, name: body, widget: richtext, required: false }
+      - { label: Body, name: body, widget: markdown, required: false }
       - {
           label: Cover Image,
           name: cover_image,
@@ -58,7 +105,13 @@ collections:
           media_library: cloudinary,
           required: false,
         }
-      - { name: gallery, label: Gallery, widget: image, multiple: true, required: false }
+      - {
+          name: gallery,
+          label: Gallery,
+          widget: image,
+          multiple: true,
+          required: false,
+        }
 
 singletons:
   - name: settings

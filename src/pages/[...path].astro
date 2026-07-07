@@ -4,8 +4,9 @@ import type { CollectionEntry } from "astro:content";
 import Layout from "@/layouts/Layout.astro";
 import Gallery from "@/components/Gallery.astro";
 import { inlineMarkdown } from "@/utils/markdown";
-import { buildPageTree, type Ancestor } from "@/utils/pages";
-import Breadcrumb from "@/components/breadcrumb.astro";
+import { buildPageTree, type Ancestor, type PageNode } from "@/utils/pages";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import ResponsiveImage from "@/components/ResponsiveImage.astro";
 
 // Pages are flat files (title → slug); URL nesting is virtual, derived from each
 // page's optional `parent` relation. A chain grandparent → parent → child
@@ -17,10 +18,19 @@ export async function getStaticPaths() {
   return pages.map((page) => {
     const node = tree.get(page.id)!;
     // Children: published pages that declare this page as their parent.
+    // Sorted by this page's configured field (title|subtitle) then order.
+    const sortField = (n: PageNode) => {
+      const value =
+        page.data.sort?.field === "subtitle" ? n.subtitle : n.title;
+      return (value ?? "").toLowerCase();
+    };
+    const sortDir = (a: PageNode, b: PageNode, dir: number = 1) =>
+      sortField(a) < sortField(b) ? -1 * dir : 1 * dir;
+
     const children = pages
       .filter((p) => p.data.parent === page.id && p.id !== page.id)
       .map((p) => tree.get(p.id)!)
-      .sort((a, b) => a.title.localeCompare(b.title))
+      .sort((a, b) => sortDir(a, b, page.data.sort?.order === "desc" ? -1 : 1))
       .map((n) => ({ title: n.title, href: n.route, subtitle: n.subtitle }));
 
     return {
@@ -54,7 +64,7 @@ const isShow = page.data.template === "show";
   <article class="page">
     <Breadcrumb {ancestors} currentPageTitle={page.data.title} />
 
-    <header class:list={["page__header", {"page__header--show": isShow}]}>
+    <header class:list={["page__header", { "page__header--show": isShow }]}>
       <h1
         class="page__title"
         style={`view-transition-name: title-${route.replace(/^\/|\/$/g, "").replace(/\//g, "-")}`}
@@ -77,6 +87,16 @@ const isShow = page.data.template === "show";
         <Gallery images={gallery} pagePath={route} alt={page.data.title} />
       )
     }
+
+    {
+      page.data.cover_image && (
+        <ResponsiveImage
+          class="page__cover"
+          src={page.data.cover_image}
+          alt={page.data.title}
+        />
+      )
+    }
     <div class="page__body">
       <Content />
     </div>
@@ -86,13 +106,24 @@ const isShow = page.data.template === "show";
         <nav class="page__children">
           <ul class="page__children-list">
             {children.map((child) => {
-              const slug = child.href.replace(/^\/|\/$/g, "").replace(/\//g, "-");
+              const slug = child.href
+                .replace(/^\/|\/$/g, "")
+                .replace(/\//g, "-");
               return (
                 <li>
                   <a href={child.href}>
-                    <span class="child__title" style={`view-transition-name: title-${slug}`}>{child.title}</span>
+                    <span
+                      class="child__title"
+                      style={`view-transition-name: title-${slug}`}
+                    >
+                      {child.title}
+                    </span>
                     {child.subtitle && (
-                      <span style={`view-transition-name: subtitle-${slug}`} set:html={inlineMarkdown(child.subtitle)} />
+                      <span
+                        class="child__subtitle"
+                        style={`view-transition-name: subtitle-${slug}`}
+                        set:html={inlineMarkdown(child.subtitle)}
+                      />
                     )}
                   </a>
                 </li>
@@ -124,13 +155,16 @@ const isShow = page.data.template === "show";
     display: flex;
     /* flex-direction: column; */
     gap: var(--size-2);
-    align-items: center;
+    align-items: last baseline;
     justify-content: center;
-    .page-header--show {
-      flex-direction: column;
-      justify-content: space-between;
-    }
     width: 100%;
+    &.page__header--show {
+      justify-content: space-between;
+
+      .page__title {
+        text-align: left;
+      }
+    }
   }
   .page__title {
     margin: 0;
@@ -153,23 +187,20 @@ const isShow = page.data.template === "show";
   }
 
   .page__body {
-    max-width: 42rem;
     width: 100%;
     margin-inline: auto;
     font-family: var(--font-body);
     font-size: var(--font-size-1);
     line-height: 1.75;
 
-    /* Give MDX content breathing room */
-    & > * + * {
-      margin-block-start: 1em;
-    }
+    /* Spacing between sibling elements is handled by global heading
+       and paragraph margins (see global.css). No owl selector here —
+       it would override heading margins and flatten the hierarchy. */
   }
 
 
   .page__children {
     width: 100%;
-    max-width: 42rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -189,21 +220,27 @@ const isShow = page.data.template === "show";
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--size-2) var(--size-4);
+    /* fit-content grid: each row is as wide as the widest row;
+       removes the need for display:contents on li, which breaks
+       during Chromium view-transition captures. */
+    display: grid;
+    gap: var(--size-3);
+    width: fit-content;
 
+    li {
+      /* Normal block — no display:contents needed because grid
+         handles equal-width rows via fit-content. */
+    }
     a {
+      display: flex;
+      /* title flush left, subtitle flush right, sharing one baseline */
+      justify-content: space-between;
+      align-items: baseline;
+      gap: var(--size-3);
       font-family: var(--font-body);
       font-size: var(--font-size-3);
       text-decoration: none;
-      display: inline-flex;
-      gap: var(--size-12);
-      align-items: center;
-      justify-content: space-between;
-      margin: auto;
-      
+
       &:hover {
         text-decoration: underline;
       }
@@ -214,7 +251,7 @@ const isShow = page.data.template === "show";
       }
       .child__title {
         font-weight: 700;
-        
+        color: light-dark(var(--gray-9), var(--gray-2));
       }
     }
   }
@@ -228,7 +265,7 @@ const isShow = page.data.template === "show";
 
     .page__title {
       font-size: var(--font-size-7);
-      letter-spacing: 0.2em;
+    
     }
 
     .page__subtitle {

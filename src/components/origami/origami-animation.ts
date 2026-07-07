@@ -268,6 +268,11 @@ export class OrigamiAnimation {
     const mtl = gsap.timeline({ defaults: { overwrite: "auto" } });
     this.#masterTl = mtl;
 
+    // Mark the starting shape's hover image active immediately — #syncHoverImage
+    // otherwise only runs on a shape *change*, so the first image would stay
+    // opacity:0 until the loop cycles back to shape 0.
+    this.#syncHoverImage();
+
     // Phase 1: reveal the first shape, then pause
     this.#showOnly(mtl, 0);
     this.#revealShape(mtl, 0);

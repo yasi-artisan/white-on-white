@@ -10,6 +10,12 @@ interface Props {
 }
 
 const { id, sections } = Astro.props;
+
+// Slug a page route the same way the destination page titles its
+// `view-transition-name` (see pages/[...path].astro), so a heading link
+// morphs straight into the page's <h1> on navigation.
+const titleVtName = (href: string) =>
+  `title-${href.replace(/^\/|\/$/g, "").replace(/\//g, "-")}`;
 ---
 
 <header class="section-heading" {id}>
@@ -20,6 +26,7 @@ const { id, sections } = Astro.props;
           class:list={["heading-link", { "is-active": i === 0 }]}
           data-shape-index={i}
           href={s.href}
+          style={`view-transition-name: ${titleVtName(s.href)}`}
         >
           {s.label}
         </a>
