@@ -7,7 +7,7 @@ menuLinks:
   - label: Papermaking/Printmaking
     url: /paper-print
   - label: Community Projects
-    url: /community
+    url: /community-projects
   - label: About
     url: /about
 footerLinks:
@@ -27,5 +27,5 @@ landingPageSettings:
       href: /printmaking-papermaking
       shape: squirrel
     - label: Community Projects
-      href: /community
-      shape: pigeon
+      href: /community-projects
+      shape: rabbit

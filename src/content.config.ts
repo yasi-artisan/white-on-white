@@ -55,7 +55,10 @@ const pages = defineCollection({
         by: z.enum(["title", "subtitle"]).default("subtitle").optional(),
         order: z.enum(["asc", "desc"]).default("desc").optional(),
       })
-      .optional(),
+      // `.nullish()` (not `.optional()`) so Sveltia's `sort: null` — written when
+      // the object field is cleared — validates. `.optional()` accepts undefined
+      // but rejects null.
+      .nullish(),
   }),
 });
 

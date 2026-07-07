@@ -129,9 +129,13 @@ export async function cloudinaryDimensions(
 
 // Eager-import every local asset so Astro's optimizer processes them at build.
 // Keys are repo paths like "/src/assets/media/foo.jpg".
+// `import: 'default'` is essential: without it, eager glob returns the module
+// namespace `{ default: ImageMetadata }`, so `.src` would be undefined and every
+// local image would render with no src (and Astro's image endpoint would receive
+// href=undefined → "UnsupportedImageFormat ... from undefined").
 const localAssets = import.meta.glob<ImageMetadata>(
   '/src/assets/media/**/*.{jpg,jpeg,png,webp,avif,gif,svg}',
-  { eager: true },
+  { eager: true, import: 'default' },
 );
 
 // Index by repo path (with + without leading slash) and by basename, so a

@@ -20,7 +20,7 @@ export async function getStaticPaths() {
     // Children: published pages that declare this page as their parent.
     // Sorted by this page's configured field (title|subtitle) then order.
     const sortField = (n: PageNode) => {
-      const value = page.data.sort?.field === "subtitle" ? n.subtitle : n.title;
+      const value = page.data.sort?.by === "subtitle" ? n.subtitle : n.title;
       return (value ?? "").toLowerCase();
     };
     const sortDir = (a: PageNode, b: PageNode, dir: number = 1) =>
