@@ -4,10 +4,18 @@ import { fontProviders } from 'astro/config'
 import cloudflare from '@astrojs/cloudflare';
 
 import mdx from '@astrojs/mdx';
+import vercelAdapter from '@astrojs/vercel';
 
 // https://astro.build/config
 export default defineConfig({
-  adapter: cloudflare(),
+  // adapter: cloudflare(),
+   output: 'static',
+  adapter: vercelAdapter({
+    imageService: true,
+    webAnalytics: {
+      enabled: true,
+    },
+  }),
 
   fonts: [
     {
