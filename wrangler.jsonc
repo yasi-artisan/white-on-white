@@ -12,4 +12,10 @@
     "enabled": true,
   },
   "vars": {},
+  "routes": [
+    {
+      "pattern": "yasamanmoussavi.com",
+      "custom_domain": true
+    }
+  ]
 }
