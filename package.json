@@ -27,9 +27,6 @@
 	"devDependencies": {
 		"postcss-custom-media": "^12.0.1",
 		"postcss-jit-props": "^1.0.16",
-		"wrangler": "^4.107.0"
-	},
-	"overrides": {
-		"vite": "^7"
+		"wrangler": "^4.110.0"
 	}
 }

@@ -16,7 +16,10 @@ const footerLinks = settings?.data?.footerLinks ?? [];
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <Font cssVariable="--font-satoshi" />
     <Font cssVariable="--font-display" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -277,7 +280,9 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     const originalSwap = e.swap;
     e.swap = async () => {
       originalSwap();
-      const img = document.querySelector<HTMLImageElement>("img.image-view__img");
+      const img = document.querySelector<HTMLImageElement>(
+        "img.image-view__img",
+      );
       if (img && !img.complete) {
         await img.decode().catch(() => {});
       }
