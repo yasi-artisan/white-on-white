@@ -44,7 +44,9 @@ const max = sections.length - 1;
   />
 </div>
 
-<style>
+<style lang="postcss">
+  @import "open-props/media.min.css";
+
   @property --_opacity {
     syntax: "<number>";
     inherits: true;
@@ -65,7 +67,7 @@ const max = sections.length - 1;
 
   .scrubber {
     --_rail-color: light-dark(var(--gray-2), var(--gray-8));
-    --_opacity: 0;
+    --_opacity: 0; /* hidden by default; appears on hover (desktop) or press (touch) */
 
     padding-block: 1.25em;
     margin-block: var(--size-2);
@@ -82,10 +84,27 @@ const max = sections.length - 1;
     backdrop-filter: blur(4px);
     border-radius: var(--radius-1);
     z-index: 5;
+  }
 
-    &:hover {
+  /* Desktop: reveal on hover (the original behavior). */
+  @media (--mouse) {
+    .scrubber:hover {
       --_opacity: 0.9;
       --_rail-color: light-dark(var(--gray-8), var(--gray-5));
+    }
+  }
+
+  /* Touch: hidden until pressed/dragged (not always on), bigger tap target,
+     horizontal drags scrub while vertical scrolls the page. */
+  @media (--touch) {
+    .scrubber {
+      min-height: 44px;
+    }
+    .scrubber:active {
+      --_opacity: 0.9;
+    }
+    .scrubber-input {
+      touch-action: pan-y;
     }
   }
 

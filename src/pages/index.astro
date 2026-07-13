@@ -5,7 +5,6 @@ import SectionHeading from "../components/SectionHeading.astro";
 import ShapeScrubber from "../components/ShapeScrubber.astro";
 import Layout from "../layouts/Layout.astro";
 
-
 const settings = await getEntry("settings", "settings");
 const sections = settings?.data.landingPageSettings.links ?? [];
 ---
@@ -44,19 +43,21 @@ const sections = settings?.data.landingPageSettings.links ?? [];
     // (settings may be a subset of the full shape set), in section order, so
     // the loop never reaches "phantom" shapes past the last real section.
     const contours = sections
-      .map((s) =>
-        shapes.find(
-          (x) => x.label.trim().toLowerCase() === s.shape.trim().toLowerCase(),
-        )?.contour,
+      .map(
+        (s) =>
+          shapes.find(
+            (x) =>
+              x.label.trim().toLowerCase() === s.shape.trim().toLowerCase(),
+          )?.contour,
       )
       .filter((c): c is string => typeof c === "string");
 
     // One instance, owned here, driving the stage, heading, and scrubber.
-    const instance = new OrigamiAnimation(
-      root,
-      contours,
-      { ...defaultConfig, pauseAfterDraw: 2.5, morphDuration: 2.5 },
-    );
+    const instance = new OrigamiAnimation(root, contours, {
+      ...defaultConfig,
+      pauseAfterDraw: 2.5,
+      morphDuration: 2.5,
+    });
     anim = instance;
     instance.startLoop();
 
@@ -71,10 +72,7 @@ const sections = settings?.data.landingPageSettings.links ?? [];
     // instead of finishing early while the contour is still morphing.
     document
       .querySelector<HTMLElement>("#section-heading")
-      ?.style.setProperty(
-        "--morph-duration",
-        `${instance.cfg.morphDuration}s`,
-      );
+      ?.style.setProperty("--morph-duration", `${instance.cfg.morphDuration}s`);
     const scrubber = document.querySelector<HTMLInputElement>(
       "#shape-scrubber .scrubber-input",
     )!;
@@ -92,7 +90,9 @@ const sections = settings?.data.landingPageSettings.links ?? [];
     const contour = document.querySelector<SVGPathElement>(
       "#shape-shifter .origami-contour",
     );
-    contour?.addEventListener("click", () => goToSection(instance.currentShape));
+    contour?.addEventListener("click", () =>
+      goToSection(instance.currentShape),
+    );
 
     // The slider is a true scrubber: dragging morphs the contour in real time
     // (folds hidden while between shapes); releasing eases onto the nearest
@@ -162,8 +162,7 @@ const sections = settings?.data.landingPageSettings.links ?? [];
         );
       }
 
-      if (scrubber.value !== String(current))
-        scrubber.value = String(current);
+      if (scrubber.value !== String(current)) scrubber.value = String(current);
     };
 
     instance.onChange(sync);
@@ -199,6 +198,40 @@ const sections = settings?.data.landingPageSettings.links ?? [];
     #shape-shifter { grid-area: origami; }
     #section-heading { grid-area: heading; }
     #shape-scrubber { grid-area: origami; }
+  }
+
+  @media (--sm-n-below) {
+    .content {
+      grid-template-rows: repeat(2, 1fr);
+      #section-heading {
+        place-self: start;
+        padding-inline: var(--size-3);
+        .heading-stack {
+          width: 100%;
+        }
+      }
+      #shape-shifter {
+        place-self: end;
+      }
+
+    }
+  }
+  /* Touch: the section titles left-align with the footer, so the content goes
+     full-width with matching inline padding; the origami stays compact/centered
+     and the (hidden) scrubber overlays it, appearing only on press. */
+  @media (--touch) {
+    .content {
+      --_width: 100%;
+      padding-inline: var(--size-3);
+      justify-items: center;
+    }
+    #shape-shifter {
+      width: min(100%, 380px);
+    }
+    #section-heading {
+      justify-self: stretch;
+      justify-items: start;
+    }
   }
 
   @media (--md-n-above) {

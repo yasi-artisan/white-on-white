@@ -392,6 +392,10 @@ export class OrigamiAnimation {
    * `goTo`).
    */
   #bindPathHover(): void {
+    // On touch there is no hover, and `pointerleave` may never fire after a tap
+    // (leaving the loop stuck paused). Skip the hover binding entirely on
+    // hover-incapable pointers; the contour's click-to-navigate still works.
+    if (!window.matchMedia("(hover: hover)").matches) return;
     this.#contour.addEventListener("pointerenter", this.#onPointerEnter);
     this.#contour.addEventListener("pointerleave", this.#onPointerLeave);
   }

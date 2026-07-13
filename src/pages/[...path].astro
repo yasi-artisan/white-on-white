@@ -148,127 +148,125 @@ const isShow = page.data.template === "show";
     flex-direction: column;
     gap: var(--size-5);
     align-items: center;
-  }
 
-  .page__header {
-    display: flex;
-    /* flex-direction: column; */
-    gap: var(--size-2);
-    align-items: last baseline;
-    justify-content: center;
-    width: 100%;
-    &.page__header--show {
-      justify-content: space-between;
-
-      .page__title {
-        text-align: left;
-      }
-    }
-  }
-  .page__title {
-    margin: 0;
-    text-align: center;
-    font-weight: 500;
-    letter-spacing: 0.15em;
-    padding-block: var(--size-3);
-    font-family: var(--font-heading);
-    font-size: var(--font-size-5);
-    line-height: 1.2;
-  }
-
-  .page__subtitle {
-    margin: 0;
-    text-align: center;
-    font-family: var(--font-body);
-    font-size: var(--size-4) !important;
-    max-width: 45ch;
-    line-height: 1.6;
-  }
-
-  .page__body {
-    width: 100%;
-    margin-inline: auto;
-    font-family: var(--font-body);
-    font-size: var(--font-size-1);
-    line-height: 1.75;
-
-    /* Spacing between sibling elements is handled by global heading
-       and paragraph margins (see global.css). No owl selector here —
-       it would override heading margins and flatten the hierarchy. */
-  }
-
-
-  .page__children {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--size-3);
-  }
-
-  .page__children-title {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    font-family: var(--font-heading);
-    font-size: var(--font-size-1);
-    color: light-dark(var(--gray-6), var(--gray-4));
-  }
-
-  .page__children-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    /* fit-content grid: each row is as wide as the widest row;
-       removes the need for display:contents on li, which breaks
-       during Chromium view-transition captures. */
-    display: grid;
-    gap: var(--size-3);
-    width: fit-content;
-
-    li {
-      /* Normal block — no display:contents needed because grid
-         handles equal-width rows via fit-content. */
-    }
-    a {
-      display: flex;
-      /* title flush left, subtitle flush right, sharing one baseline */
-      justify-content: space-between;
-      align-items: baseline;
-      gap: var(--size-3);
-      font-family: var(--font-body);
-      font-size: var(--font-size-3);
-      text-decoration: none;
-
-      &:hover {
-        text-decoration: underline;
-      }
-
-      span {
-        font-size: var(--font-size-2);
-        color: light-dark(var(--gray-6), var(--gray-6));
-      }
-      .child__title {
-        font-weight: 700;
-        color: light-dark(var(--gray-9), var(--gray-2));
-      }
-    }
-  }
-
-  @media (--md-n-above) {
-    .page {
+    @media (--sm-n-above) {
       padding-block-start: var(--size-relative-12);
       padding-inline: var(--size-5);
       gap: var(--size-6);
     }
 
-    .page__title {
-      font-size: var(--font-size-7);
-    
+    .page__header {
+      display: flex;
+      flex-direction: column;
+      gap: var(--size-2);
+      justify-content: start;
+      width: 100%;
+
+      @media (--sm-n-above) {
+        flex-direction: row;
+        align-items: baseline;
+      }
+
+      &.page__header--show {
+        justify-content: space-between;
+
+        .page__title {
+          text-align: left;
+        }
+      }
+
+      .page__title {
+        margin: 0;
+        text-align: center;
+        font-weight: 500;
+        letter-spacing: 0.15em;
+        padding-block: var(--size-3);
+        font-family: var(--font-heading);
+        font-size: var(--font-size-5);
+        line-height: 1.2;
+
+        @media (--sm-n-above) {
+          font-size: var(--font-size-7);
+        }
+      }
+
+      .page__subtitle {
+        margin: 0;
+        text-align: center;
+        font-family: var(--font-body);
+        font-size: var(--size-4) !important;
+        max-width: 45ch;
+        line-height: 1.6;
+
+        @media (--sm-n-above) {
+          font-size: var(--font-size-4);
+        }
+      }
     }
 
-    .page__subtitle {
-      font-size: var(--font-size-4);
+    /* Sibling spacing comes from global heading/paragraph margins
+       (global.css); no owl selector — it would flatten the hierarchy. */
+    .page__body {
+      width: 100%;
+      margin-inline: auto;
+      font-family: var(--font-body);
+      font-size: var(--font-size-1);
+      line-height: 1.75;
+    }
+
+    .page__children {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--size-3);
+
+      /* fit-content grid: each row is as wide as the widest row; avoids
+         display:contents on li, which breaks Chromium view-transition captures. */
+      .page__children-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: var(--size-3);
+        width: 100%;
+        justify-content: start;
+
+        @media (--sm-n-above) {
+          justify-content: center;
+          align-items: last baseline;
+        }
+
+        a {
+          display: flex;
+          flex-direction: column;
+          align-items: baseline;
+          gap: 0;
+          font-family: var(--font-body);
+          font-size: var(--font-size-3);
+          text-decoration: none;
+
+          /* title flush left, subtitle flush right, sharing one baseline */
+          &:hover {
+            text-decoration: underline;
+          }
+
+          @media (--sm-n-above) {
+            flex-direction: row;
+            gap: var(--size-4);
+          }
+
+          span {
+            font-size: var(--font-size-2);
+            color: light-dark(var(--gray-6), var(--gray-6));
+          }
+
+          .child__title {
+            font-weight: 700;
+            color: light-dark(var(--gray-9), var(--gray-2));
+          }
+        }
+      }
     }
   }
 </style>

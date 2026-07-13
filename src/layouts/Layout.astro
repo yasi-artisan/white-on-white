@@ -16,7 +16,7 @@ const footerLinks = settings?.data?.footerLinks ?? [];
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <Font cssVariable="--font-satoshi" />
     <Font cssVariable="--font-display" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -26,7 +26,7 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     <title>{siteName}</title>
   </head>
   <body>
-    <aside class="rail" aria-label="Site navigation">
+    <aside class="rail" id="site-nav" aria-label="Site navigation">
       {/* Persistent vertical wordmark — the idle indicator and a home link. */}
       <!-- <a class="rail__mark" href="/" aria-label={`${siteName} — home`}>
         {siteName}
@@ -54,7 +54,9 @@ const footerLinks = settings?.data?.footerLinks ?? [];
   </body>
 </html>
 
-<style>
+<style lang="postcss">
+  @import "open-props/media.min.css";
+
   body {
     overflow-x: clip;
     display: grid;
@@ -62,9 +64,14 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     grid-template-rows: 1fr;
   }
 
-  .rail:hover,
-  .rail:focus-within {
-    width: min(30ch, 80vw);
+  /* Desktop: hover/focus reveals the menu (--mouse = hover-capable + fine
+     pointer). Touch devices get the slide/tap path below instead of a :hover
+     that never fires and leaves the menu stuck at opacity:0. */
+  @media (--mouse) {
+    .rail:hover,
+    .rail:focus-within {
+      width: min(30ch, 80vw);
+    }
   }
 
   .rail {
@@ -125,9 +132,14 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     pointer-events: none;
   }
 
-  body:has(.rail:hover, .rail:focus-within) .menu {
-    opacity: 1;
-    pointer-events: auto;
+  /* Desktop menu reveal (--mouse). The descendant form is equivalent to the old
+     `body:has(.rail:hover, …) .menu` and cheaper. */
+  @media (--mouse) {
+    .rail:hover .menu,
+    .rail:focus-within .menu {
+      opacity: 1;
+      pointer-events: auto;
+    }
   }
 
   .menu__list {
@@ -172,7 +184,36 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     margin: 0;
   }
 
+  /* Touch: the rail itself is the handle. Drag it open/closed or tap to toggle
+     (see the script below). Widening it pushes <main> off the right edge for
+     free via the body grid + overflow-x: clip. The open state is driven by
+     html[data-nav-open] (set by JS on tap/drag) and :focus-within (keyboard). */
+  @media (--touch) {
+    html[data-nav-open] .rail,
+    .rail:focus-within {
+      width: max(18.75rem, 85vw); /* 300px min, ~85% of the viewport */
+    }
+    html[data-nav-open] {
+      overflow: hidden; /* lock background scroll while the rail is open */
+    }
+    .rail {
+      touch-action: pan-y; /* claim the horizontal drag; let vertical scroll through */
+      cursor: ew-resize;
+      user-select: none; /* avoid selecting menu text while dragging the rail */
+    }
+    html[data-nav-open] .rail .menu,
+    .rail:focus-within .menu {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    /* small top clearance so the first link is reachable when open */
+    .rail .menu {
+      padding-block-start: var(--size-2);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    .rail,
     .menu__link,
     .rail__mark {
       transition: none;
@@ -240,5 +281,113 @@ const footerLinks = settings?.data?.footerLinks ?? [];
         await img.decode().catch(() => {});
       }
     };
+  });
+
+  // ── Mobile/touch nav: the rail is a slide/tap handle ───────────────
+  // On hover-capable pointers the CSS :hover path opens the rail (desktop), so
+  // this block no-ops there. On touch (no hover) the rail opens by dragging it
+  // or tapping it; widening it pushes <main> off the right edge. Bound on
+  // astro:page-load so it survives ClientRouter morphs, deduped via data-bound.
+  const NAV_ATTR = "data-nav-open";
+  const isTouch = () =>
+    window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+  const RAIL_COLLAPSED = 32; // var(--size-7) = 2rem
+  const railOpenWidthPx = () => Math.max(300, window.innerWidth * 0.85);
+
+  const setNavOpen = (open: boolean) => {
+    document.documentElement.toggleAttribute(NAV_ATTR, open);
+    // inert gives a focus trap for free (the footer lives in <main> too) and
+    // hides the pushed-off content from AT while the rail is open.
+    document.querySelector("main")?.toggleAttribute("inert", !open);
+  };
+
+  const initNav = () => {
+    // Always start closed (defensive against a leftover attribute across navigations).
+    document.documentElement.removeAttribute(NAV_ATTR);
+    document.querySelector("main")?.removeAttribute("inert");
+    if (!isTouch()) return; // desktop uses the CSS hover path
+
+    const rail = document.querySelector<HTMLElement>("#site-nav");
+    if (!rail || rail.dataset.bound === "1") return; // morph kept it → skip rebind
+    rail.dataset.bound = "1";
+
+    // Tap the strip to toggle; tap a link to navigate + close.
+    rail.addEventListener("click", (e) => {
+      if ((e.target as Element).closest("a")) setNavOpen(false);
+      else setNavOpen(!document.documentElement.hasAttribute(NAV_ATTR));
+    });
+    document.addEventListener("keydown", (e) => {
+      if (
+        e.key === "Escape" &&
+        document.documentElement.hasAttribute(NAV_ATTR)
+      ) {
+        setNavOpen(false);
+      }
+    });
+
+    // Drag the rail open/closed, snapping past the midpoint on release. Track on
+    // window (not pointer capture) so a fast drag keeps flowing even if the
+    // pointer briefly leaves the rail, and so the subsequent click still targets
+    // the element under the finger (e.g. a link) normally.
+    let dragging = false;
+    let startX = 0;
+    let startWidth = 0;
+    let moved = false;
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > 6) moved = true;
+      else return;
+      const width = Math.min(
+        Math.max(RAIL_COLLAPSED, startWidth + dx),
+        railOpenWidthPx(),
+      );
+      rail.style.width = `${width}px`;
+    };
+
+    const endDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+      if (moved) {
+        // A drag can synthesize a stray click on the element under the finger —
+        // swallow it so a drag ending on a link doesn't navigate.
+        const suppress = (ev: Event) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          rail.removeEventListener("click", suppress, true);
+        };
+        rail.addEventListener("click", suppress, true);
+        const current = rail.getBoundingClientRect().width;
+        const midpoint = (RAIL_COLLAPSED + railOpenWidthPx()) / 2;
+        const isOpen = document.documentElement.hasAttribute(NAV_ATTR);
+        if (current > midpoint && !isOpen) setNavOpen(true);
+        else if (current <= midpoint && isOpen) setNavOpen(false);
+      }
+      rail.style.transition = ""; // restore the CSS width transition
+      rail.style.width = ""; // fall back to the stylesheet value → animates
+    };
+
+    rail.addEventListener("pointerdown", (e) => {
+      if (e.button && e.button !== 0) return; // primary pointer only
+      dragging = true;
+      moved = false;
+      startX = e.clientX;
+      startWidth = rail.getBoundingClientRect().width;
+      rail.style.transition = "none"; // 1:1 with the finger during the drag
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", endDrag);
+      window.addEventListener("pointercancel", endDrag);
+    });
+  };
+
+  document.addEventListener("astro:page-load", initNav);
+  document.addEventListener("astro:before-swap", () => {
+    // Close before the view transition snapshots the outgoing page.
+    document.documentElement.removeAttribute(NAV_ATTR);
+    document.querySelector("main")?.removeAttribute("inert");
   });
 </script>
