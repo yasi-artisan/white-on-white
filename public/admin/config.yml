@@ -3,6 +3,9 @@ backend:
   name: github
   repo: yasi-artisan/white-on-white
   branch: main
+  site_domain: yasamanmoussavi.com # change this to your domain
+  base_url: https://yasamanmoussavi.com # change this to your prod URL
+  auth_endpoint: oauth # the oauth route provided by the integration
 
 # media_folder is where uploads are written (src/ so Astro's <Image> optimizer
 # processes them at build — files in public/ are served as-is and skipped).

@@ -8,6 +8,8 @@ import { buildPageTree, type Ancestor, type PageNode } from "@/utils/pages";
 import Breadcrumb from "@/components/Breadcrumb.astro";
 import ResponsiveImage from "@/components/ResponsiveImage.astro";
 
+export const prerender = true;
+
 // Pages are flat files (title → slug); URL nesting is virtual, derived from each
 // page's optional `parent` relation. A chain grandparent → parent → child
 // produces /grandparent/parent/child, a breadcrumb, and a sub-page list.

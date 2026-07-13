@@ -6,6 +6,8 @@ import cloudflare from '@astrojs/cloudflare';
 import mdx from '@astrojs/mdx';
 import vercelAdapter from '@astrojs/vercel';
 
+import sveltiaCms from "astro-sveltia-cms";
+
 // https://astro.build/config
 export default defineConfig({
   // adapter: cloudflare(),
@@ -40,5 +42,5 @@ export default defineConfig({
     },
   },
 
-  integrations: [mdx()],
+  integrations: [mdx(), sveltiaCms()],
 });

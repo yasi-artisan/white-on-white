@@ -5,6 +5,8 @@ import SectionHeading from "../components/SectionHeading.astro";
 import ShapeScrubber from "../components/ShapeScrubber.astro";
 import Layout from "../layouts/Layout.astro";
 
+export const prerender = true;
+
 const settings = await getEntry("settings", "settings");
 const sections = settings?.data.landingPageSettings.links ?? [];
 ---

@@ -5,6 +5,8 @@ import ResponsiveImage from '@/components/ResponsiveImage.astro';
 import { DETAIL_WIDTHS, DETAIL_SIZES, cloudinaryDimensions } from '@/utils/image';
 import { buildPageTree } from '@/utils/pages';
 
+export const prerender = true;
+
 // One route per gallery image across all published pages:
 //   /image/<page-route>/<index>   e.g. /image/painting/series-a/0
 // The route is derived from the page's `parent` chain — matching the catch-all
