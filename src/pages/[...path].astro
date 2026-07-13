@@ -90,7 +90,7 @@ const isShow = page.data.template === "show";
     {
       page.data.cover_image && (
         <ResponsiveImage
-          class="page__cover"
+          class:list={["page__cover", page.data.featured_image_size]}
           src={page.data.cover_image}
           alt={page.data.title}
         />
@@ -137,6 +137,8 @@ const isShow = page.data.template === "show";
 
 <style lang="postcss">
   @import "open-props/media.min.css";
+
+
 
   .page {
     padding-block-start: var(--size-7);

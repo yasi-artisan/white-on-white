@@ -150,3 +150,15 @@ blockquote p:last-of-type em {
     font-size: var(--font-size-6);
   }
 }
+
+/* ── Utility classes ─────────────────────────────────────────── */
+
+.w-sm {
+  width: 20rem;
+}
+.w-lg {
+  width: 40rem;
+}
+.w-full {
+  width: 100%;
+}

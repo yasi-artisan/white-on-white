@@ -49,6 +49,10 @@ const pages = defineCollection({
     // because Sveltia writes `null` for an unset single-select relation.
     parent: z.string().nullish(),
     cover_image: z.string().optional(),
+    featured_image_size: z
+      .enum(["w-sm", "w-lg", "w-full"])
+      .default("w-full")
+      .optional(),
     gallery: z.array(z.string()).optional(),
     sort: z
       .object({

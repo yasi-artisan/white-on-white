@@ -98,6 +98,19 @@ collections:
           required: false,
         }
       - {
+          label: Featured Image Size,
+          name: featured_image_size,
+          widget: select,
+          options:
+            [
+              { label: Small, value: w-sm },
+              { label: Medium, value: w-lg },
+              { label: Full, value: w-full },
+            ],
+          default: w-full,
+          required: false,
+        }
+      - {
           name: gallery,
           label: Gallery,
           widget: image,
