@@ -4,7 +4,12 @@ import type { CollectionEntry } from "astro:content";
 import Layout from "@/layouts/Layout.astro";
 import Gallery from "@/components/Gallery.astro";
 import { inlineMarkdown } from "@/utils/markdown";
-import { buildPageTree, sortedChildren, type Ancestor, type ChildLink } from "@/utils/pages";
+import {
+  buildPageTree,
+  sortedChildren,
+  type Ancestor,
+  type ChildLink,
+} from "@/utils/pages";
 import Breadcrumb from "@/components/Breadcrumb.astro";
 import ResponsiveImage from "@/components/ResponsiveImage.astro";
 
@@ -209,9 +214,9 @@ const isShow = page.data.template === "show";
 
     .page__children {
       width: 100%;
-      display: flex;
+      /* display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: center; */
       gap: var(--size-3);
 
       /* fit-content grid: each row is as wide as the widest row; avoids
@@ -220,15 +225,10 @@ const isShow = page.data.template === "show";
         list-style: none;
         margin: 0;
         padding: 0;
-        display: grid;
         gap: var(--size-3);
-        width: 100%;
-        justify-content: start;
-
-        @media (--sm-n-above) {
-          justify-content: center;
-          align-items: last baseline;
-        }
+        display: flex;
+        flex-direction: column;
+        align-items: start;
 
         a {
           display: flex;

@@ -11,9 +11,17 @@ export interface Section {
 interface Props {
   id: string;
   sections: Section[];
+  /**
+   * What the section title does on click.
+   * - `"parent"` (default): the title links straight to the section's own
+   *   page (`href`). Children are ignored.
+   * - `"children"`: the title toggles a popover of child links (when the
+   *   section has any). A section without children still falls back to a link.
+   */
+  mode?: "parent" | "children";
 }
 
-const { id, sections } = Astro.props;
+const { id, sections, mode = "parent" } = Astro.props;
 
 // Slug a page route the same way the destination page titles its
 // `view-transition-name` (see pages/[...path].astro), so a section title
@@ -32,7 +40,13 @@ const titleVtName = (href: string) =>
         const anchor = `--${id}-${i}`;
         const panelId = `${id}-panel-${i}`;
 
-        return s.children && s.children.length > 0 ? (
+        // `children` mode toggles a popover — but only when there are actually
+        // children to show; otherwise (and always in `parent` mode) the title
+        // is a plain link to the section's own page.
+        const children = s.children ?? [];
+        const showToggle = mode === "children" && children.length > 0;
+
+        return showToggle ? (
           <div class="section-group">
             <button
               type="button"
@@ -58,7 +72,7 @@ const titleVtName = (href: string) =>
               style={`position-anchor: ${anchor}`}
             >
               <ul class="child-list">
-                {s.children.map((c) => (
+                {children.map((c) => (
                   <li>
                     {/* The title carries the same view-transition-name as the
                         destination page's <h1> (titleVtName slugs the route the
@@ -151,8 +165,8 @@ const titleVtName = (href: string) =>
      titles. Top-layer keeps it above the origami and out of layout flow. */
   .section-panel {
     inline-size: max-content;
-    /* max-inline-size: min(22rem, 70vw); */
-    /* max-block-size: 60svh; */
+    max-inline-size: min(22rem, 70vw);
+    max-block-size: 40svh;
     overflow-y: auto;
 
     /* No background, no border — just the floating links. */
@@ -187,8 +201,8 @@ const titleVtName = (href: string) =>
     .section-panel {
       inset: auto;
       margin: 0;
-      inset-block-start: anchor(top);
-      inset-inline-start: anchor(right);
+      inset-block-end: anchor(top);
+      inset-inline-start: anchor(left);
       margin-inline-start: var(--size-4);
     }
   }
@@ -207,7 +221,7 @@ const titleVtName = (href: string) =>
       line-height: 1.4;
       text-decoration: none;
       color: light-dark(var(--gray-8), var(--gray-3));
-
+      text-wrap: nowrap;
       &:hover {
         text-decoration: underline;
         text-underline-offset: 0.2em;
