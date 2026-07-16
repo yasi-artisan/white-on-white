@@ -17,6 +17,7 @@ html {
   font-size: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scrollbar-gutter: stable; /* keep the gutter reserved so the nav scroll-lock can't shift the page */
 }
 
 body {

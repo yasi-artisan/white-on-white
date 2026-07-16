@@ -1,12 +1,11 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import { fontProviders } from 'astro/config'
-import cloudflare from '@astrojs/cloudflare';
 
 import mdx from '@astrojs/mdx';
 import vercelAdapter from '@astrojs/vercel';
 
-import sveltiaCms from "astro-sveltia-cms";
+import sveltiaCMS from 'astro-sveltia-cms';
 
 // https://astro.build/config
 export default defineConfig({
@@ -42,5 +41,5 @@ export default defineConfig({
     },
   },
 
-  integrations: [mdx(), sveltiaCms()],
+  integrations: [mdx(), sveltiaCMS()],
 });

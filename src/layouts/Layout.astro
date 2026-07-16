@@ -32,10 +32,6 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     <aside class="rail" id="site-nav" aria-label="Site navigation">
       {/* Tap affordance for touch: 3-line grip that fades out once open. */}
       <div class="rail__grip" aria-hidden="true"></div>
-      {/* Persistent vertical wordmark — the idle indicator and a home link. */}
-      <!-- <a class="rail__mark" href="/" aria-label={`${siteName} — home`}>
-        {siteName}
-      </a> -->
       {
         menuLinks.length > 0 && (
           <nav class="menu" aria-label="Main">
@@ -53,6 +49,7 @@ const footerLinks = settings?.data?.footerLinks ?? [];
       }
     </aside>
     <main>
+      <div class="overlay"></div>
       <slot />
       <Footer title={siteName} links={footerLinks} />
     </main>
@@ -69,15 +66,32 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     grid-template-rows: 1fr;
   }
 
-  /* Desktop: hover/focus reveals the menu (--mouse = hover-capable + fine
-     pointer). Touch devices get the tap path below instead of a :hover
-     that never fires and leaves the menu stuck at opacity:0. */
+  main {
+    position: relative;
+  }
+
+  .overlay {
+    display: none;
+  }
+
+  /* Desktop: a click toggles the rail open (data-nav-open); :focus-within
+     covers keyboard. No :hover opening. --mouse = hover-capable + fine pointer. */
   @media (--mouse) {
-    .rail:hover,
-    .rail:focus-within {
+    .rail:focus-within,
+    html[data-nav-open] .rail {
       width: min(30ch, 80vw);
+
+      & ~ main > .overlay {
+        display: block;
+        inset: 0;
+        z-index: 100;
+        backdrop-filter: blur(2px);
+        background: rgba(0, 0, 0, 0.2);
+        position:absolute;
+      }
     }
   }
+
 
   .rail {
     width: var(--size-7);
@@ -89,9 +103,10 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     border-right: 1px solid var(--border-color);
     overflow: hidden;
     position: relative;
-    max-height: 100dvh;
     position: sticky;
     top: 0;
+    align-self: start; /* stretched grid items can't stick */
+    height: 100dvh;
 
     &::after, &::before {
       content: "";
@@ -119,7 +134,7 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     margin: auto;
     pointer-events: none;
     display: none;
-    color: light-dark(var(--gray-3), var(--gray-7));
+    color: light-dark(var(--gray-4), var(--gray-7));
     background:
       linear-gradient(currentColor, currentColor) center top / 100% 1px no-repeat,
       linear-gradient(currentColor, currentColor) center / 100% 1px no-repeat,
@@ -157,11 +172,10 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     pointer-events: none;
   }
 
-  /* Desktop menu reveal (--mouse). The descendant form is equivalent to the old
-     `body:has(.rail:hover, …) .menu` and cheaper. */
+  /* Desktop menu reveal (--mouse) — on click-pin or keyboard focus. */
   @media (--mouse) {
-    .rail:hover .menu,
-    .rail:focus-within .menu {
+    .rail:focus-within .menu,
+    html[data-nav-open] .rail .menu {
       opacity: 1;
       pointer-events: auto;
     }
@@ -210,16 +224,23 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     margin: 0;
   }
 
+  /* Scroll lock on open — <html> ONLY. overflow:hidden on <body> would make
+     body a scroll container and defeat the rail's position:sticky (the rail
+     un-pins and snaps to its document position, so opening mid-scroll shows a
+     slice of the menu instead of its top at the window). <html> holds the
+     viewport scrollbar, so locking it is enough; scrollbar-gutter: stable
+     (global.css) keeps the gutter reserved so the lock can't shift the page. */
+  html[data-nav-open] {
+    overflow: hidden;
+  }
+
   /* Touch: tap the rail to toggle. Widening it pushes <main> off the right edge
      for free via the body grid + overflow-x: clip. The open state is driven by
      html[data-nav-open] (set by JS on tap) and :focus-within (keyboard). */
   @media (--touch) {
     html[data-nav-open] .rail,
     .rail:focus-within {
-      width: max(18.75rem, 85vw); /* 300px min, ~85% of the viewport */
-    }
-    html[data-nav-open] {
-      overflow: hidden; /* lock background scroll while the rail is open */
+      width: min(18.75rem, 85vw);
     }
     .rail {
       touch-action: manipulation; /* snappy taps, no double-tap-zoom, scroll still works */
@@ -315,14 +336,13 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     };
   });
 
-  // ── Mobile/touch nav: tap the rail to toggle ───────────────────────
-  // On hover-capable pointers the CSS :hover path opens the rail (desktop), so
-  // this block no-ops there. On touch (no hover) a tap on the rail toggles the
-  // drawer open/closed; widening it pushes <main> off the right edge. Bound on
-  // astro:page-load so it survives ClientRouter morphs, deduped via data-bound.
+  // ── Nav: click/tap the rail to toggle (pins open) ──────────────────
+  // Binds on every pointer. A click on the rail pins it open via data-nav-open
+  // (the CSS then widens it, shows the overlay, and locks scroll); a click on a
+  // link navigates + closes; Escape closes. On desktop the :hover peek still
+  // works without pinning. Bound on astro:page-load so it survives ClientRouter
+  // morphs, deduped via data-bound.
   const NAV_ATTR = "data-nav-open";
-  const isTouch = () =>
-    window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 
   const setNavOpen = (open: boolean) => {
     document.documentElement.toggleAttribute(NAV_ATTR, open);
@@ -335,14 +355,12 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     // Always start closed (defensive against a leftover attribute across navigations).
     document.documentElement.removeAttribute(NAV_ATTR);
     document.querySelector("main")?.removeAttribute("inert");
-    if (!isTouch()) return; // desktop uses the CSS hover path
 
     const rail = document.querySelector<HTMLElement>("#site-nav");
     if (!rail || rail.dataset.bound === "1") return; // morph kept it → skip rebind
     rail.dataset.bound = "1";
 
-    // Tap the rail to toggle; tap a link to navigate + close. With the drag gone
-    // every tap is a clean click — no threshold, no stray-click suppression.
+    // Click the rail to toggle; click a link to navigate + close.
     rail.addEventListener("click", (e) => {
       if ((e.target as Element).closest("a")) setNavOpen(false);
       else setNavOpen(!document.documentElement.hasAttribute(NAV_ATTR));
