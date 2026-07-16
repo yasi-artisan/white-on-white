@@ -5,6 +5,12 @@ export interface Ancestor {
   href: string;
 }
 
+export interface ChildLink {
+  title: string;
+  href: string;
+  subtitle?: string;
+}
+
 export interface PageNode {
   id: string;
   title: string;
@@ -75,4 +81,30 @@ export function buildPageTree(
 
   for (const p of pages) build(p.id, new Set());
   return nodes;
+}
+
+/**
+ * Sorted child links of a page — the published pages that declare `parentId`
+ * as their `parent`, ordered by the *parent's* `sort.by`/`order` config (default
+ * title/asc when `sort` is unset, matching the schema's nullish handling). Shared
+ * by the homepage section accordion and the per-page child listing so the two
+ * never disagree. `allPages` should already be draft-filtered by the caller.
+ */
+export function sortedChildren(
+  allPages: CollectionEntry<'pages'>[],
+  tree: Map<string, PageNode>,
+  parentId: string,
+): ChildLink[] {
+  const parent = allPages.find((p) => p.id === parentId);
+  const sortField = (n: PageNode) => {
+    const value = parent?.data.sort?.by === 'subtitle' ? n.subtitle : n.title;
+    return (value ?? '').toLowerCase();
+  };
+  const dir = parent?.data.sort?.order === 'desc' ? -1 : 1;
+
+  return allPages
+    .filter((p) => p.data.parent === parentId && p.id !== parentId)
+    .map((p) => tree.get(p.id)!)
+    .sort((a, b) => (sortField(a) < sortField(b) ? -1 * dir : 1 * dir))
+    .map((n) => ({ title: n.title, href: n.route, subtitle: n.subtitle }));
 }

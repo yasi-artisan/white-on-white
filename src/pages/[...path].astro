@@ -4,7 +4,7 @@ import type { CollectionEntry } from "astro:content";
 import Layout from "@/layouts/Layout.astro";
 import Gallery from "@/components/Gallery.astro";
 import { inlineMarkdown } from "@/utils/markdown";
-import { buildPageTree, type Ancestor, type PageNode } from "@/utils/pages";
+import { buildPageTree, sortedChildren, type Ancestor, type ChildLink } from "@/utils/pages";
 import Breadcrumb from "@/components/Breadcrumb.astro";
 import ResponsiveImage from "@/components/ResponsiveImage.astro";
 
@@ -19,20 +19,9 @@ export async function getStaticPaths() {
 
   return pages.map((page) => {
     const node = tree.get(page.id)!;
-    // Children: published pages that declare this page as their parent.
-    // Sorted by this page's configured field (title|subtitle) then order.
-    const sortField = (n: PageNode) => {
-      const value = page.data.sort?.by === "subtitle" ? n.subtitle : n.title;
-      return (value ?? "").toLowerCase();
-    };
-    const sortDir = (a: PageNode, b: PageNode, dir: number = 1) =>
-      sortField(a) < sortField(b) ? -1 * dir : 1 * dir;
-
-    const children = pages
-      .filter((p) => p.data.parent === page.id && p.id !== page.id)
-      .map((p) => tree.get(p.id)!)
-      .sort((a, b) => sortDir(a, b, page.data.sort?.order === "desc" ? -1 : 1))
-      .map((n) => ({ title: n.title, href: n.route, subtitle: n.subtitle }));
+    // Children: published pages that declare this page as their parent,
+    // sorted by this page's configured field/order (see sortedChildren).
+    const children = sortedChildren(pages, tree, page.id);
 
     return {
       params: { path: node.route.replace(/^\//, "") },
@@ -50,7 +39,7 @@ interface Props {
   page: CollectionEntry<"pages">;
   route: string;
   ancestors: Ancestor[];
-  children: { title: string; href: string; subtitle?: string }[];
+  children: ChildLink[];
 }
 
 const { page, route, ancestors, children }: Props = Astro.props;

@@ -1,7 +1,11 @@
 ---
+import type { ChildLink } from "../utils/pages";
+
 export interface Section {
   label: string;
   href: string;
+  shape?: string;
+  children?: ChildLink[];
 }
 
 interface Props {
@@ -12,7 +16,7 @@ interface Props {
 const { id, sections } = Astro.props;
 
 // Slug a page route the same way the destination page titles its
-// `view-transition-name` (see pages/[...path].astro), so a heading link
+// `view-transition-name` (see pages/[...path].astro), so a section title
 // morphs straight into the page's <h1> on navigation.
 const titleVtName = (href: string) =>
   `title-${href.replace(/^\/|\/$/g, "").replace(/\//g, "-")}`;
@@ -21,16 +25,70 @@ const titleVtName = (href: string) =>
 <header class="section-heading" {id}>
   <div class="heading-stack">
     {
-      sections.map((s, i) => (
-        <a
-          class:list={["heading-link", { "is-active": i === 0 }]}
-          data-shape-index={i}
-          href={s.href}
-          style={`view-transition-name: ${titleVtName(s.href)}`}
-        >
-          {s.label}
-        </a>
-      ))
+      sections.map((s, i) => {
+        // Each popover is anchored to its own trigger via a unique anchor name,
+        // so it can float beside the title. `popover=auto` makes the group
+        // exclusive (only one open) and light-dismissable — native, no JS.
+        const anchor = `--${id}-${i}`;
+        const panelId = `${id}-panel-${i}`;
+
+        return s.children && s.children.length > 0 ? (
+          <div class="section-group">
+            <button
+              type="button"
+              class="section-trigger"
+              popovertarget={panelId}
+              aria-haspopup="true"
+              style={`anchor-name: ${anchor}`}
+            >
+              <span
+                class="title-label"
+                style={`view-transition-name: ${titleVtName(s.href)}`}
+              >
+                {s.label}
+              </span>
+            </button>
+            {/* Child links only — the section's own page is reached via the
+                origami, not duplicated here. No background: the list floats in
+                the margin beside the titles rather than as a boxed dropdown. */}
+            <div
+              id={panelId}
+              popover="auto"
+              class="section-panel"
+              style={`position-anchor: ${anchor}`}
+            >
+              <ul class="child-list">
+                {s.children.map((c) => (
+                  <li>
+                    {/* The title carries the same view-transition-name as the
+                        destination page's <h1> (titleVtName slugs the route the
+                        same way), so the link morphs into the page title on
+                        click. Closed popovers are display:none, so only the open
+                        panel's names are ever live — no duplicates. */}
+                    <a href={c.href}>
+                      <span
+                        class="child-title"
+                        style={`view-transition-name: ${titleVtName(c.href)}`}
+                      >
+                        {c.title}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <a class="section-trigger" href={s.href}>
+            <span
+              class="title-label"
+              style={`view-transition-name: ${titleVtName(s.href)}`}
+            >
+              {s.label}
+            </span>
+          </a>
+        );
+      })
     }
   </div>
 </header>
@@ -46,46 +104,121 @@ const titleVtName = (href: string) =>
 
   .heading-stack {
     display: flex;
-    flex-direction: column;
     align-items: flex-start;
-    gap: 0.5em;
     flex-wrap: wrap;
+    gap: 1.5em;
+    width: 100%;
   }
 
-  .heading-link {
-    font-size: var(--size-3);
-    font-family: var(--font-heading);
-    font-weight: 500;
-    letter-spacing: 0.18em;
+  /* <button> and the childless <a> share this — identical minimal look. The
+     button is reset so it reads as plain title text, not a control. */
+  .section-trigger {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    text-align: start;
+    cursor: pointer;
+    display: block;
     text-decoration: none;
-    color: light-dark(var(--gray-9), var(--gray-2));
-    text-wrap: balance;
-    line-height: 1.3;
-    max-width: none;
-
-    opacity: 0.4;
-    pointer-events: none;
-    transition: opacity var(--morph-duration, 0.4s) cubic-bezier(0.45, 0, 0.55, 1);
   }
-
-  .heading-link.is-active {
-    opacity: 1;
-    pointer-events: auto;
-    font-weight: 600;
-  }
-
-  .heading-link:hover {
+  .section-trigger:focus-visible .title-label {
     text-decoration: underline;
     text-underline-offset: 0.2em;
   }
 
-  @media (--md-n-above) {
-    .heading-stack {
-      flex-direction: row;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 1.25em;
-      flex-wrap: wrap;
+  .title-label {
+    display: inline-block;
+    font-size: var(--size-3);
+    font-family: var(--font-heading);
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-wrap: balance;
+    line-height: 1.3;
+    color: light-dark(var(--gray-9), var(--gray-2));
+  }
+
+  .section-trigger:hover .title-label {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  /* The popover floats beside its trigger (anchored to the title's right edge),
+     in the empty margin, so — with no box — it never overlaps the stacked
+     titles. Top-layer keeps it above the origami and out of layout flow. */
+  .section-panel {
+    inline-size: max-content;
+    /* max-inline-size: min(22rem, 70vw); */
+    /* max-block-size: 60svh; */
+    overflow-y: auto;
+
+    /* No background, no border — just the floating links. */
+    background: none;
+    border: none;
+    padding: 0;
+
+    opacity: 0;
+    translate: -0.3rem 0;
+    transition:
+      opacity 0.18s ease,
+      translate 0.18s ease,
+      overlay 0.18s allow-discrete,
+      display 0.18s allow-discrete;
+  }
+  .section-panel:popover-open {
+    opacity: 1;
+    translate: 0 0;
+  }
+  @starting-style {
+    .section-panel:popover-open {
+      opacity: 0;
+      translate: -0.3rem 0;
+    }
+  }
+
+  /* Anchor the flyout beside its trigger — but only where anchor positioning
+     exists. Without it, `anchor()` is dropped and `inset:auto` would strand the
+     popover at the viewport corner; gating keeps the UA's centered default so
+     the panel is always visible. */
+  @supports (inset-block-start: anchor(top)) {
+    .section-panel {
+      inset: auto;
+      margin: 0;
+      inset-block-start: anchor(top);
+      inset-inline-start: anchor(right);
+      margin-inline-start: var(--size-4);
+    }
+  }
+
+  .child-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    /* flex-direction: column; */
+    gap: var(--size-3);
+
+    a {
+      font-family: var(--font-body);
+      font-size: var(--font-size-1);
+      line-height: 1.4;
+      text-decoration: none;
+      color: light-dark(var(--gray-8), var(--gray-3));
+
+      &:hover {
+        text-decoration: underline;
+        text-underline-offset: 0.2em;
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .section-panel {
+      transition: none;
+      translate: 0 0;
     }
   }
 </style>

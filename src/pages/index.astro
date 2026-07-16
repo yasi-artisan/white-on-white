@@ -1,20 +1,32 @@
 ---
-import { getEntry } from "astro:content";
+import { getCollection, getEntry } from "astro:content";
 import Origami from "../components/origami/Origami.astro";
 import SectionHeading from "../components/SectionHeading.astro";
 import ShapeScrubber from "../components/ShapeScrubber.astro";
 import Layout from "../layouts/Layout.astro";
+import { buildPageTree, sortedChildren, type ChildLink } from "../utils/pages";
 
 export const prerender = true;
 
 const settings = await getEntry("settings", "settings");
 const sections = settings?.data.landingPageSettings.links ?? [];
+
+// Resolve each landing section's child pages (published pages whose `parent` is
+// the section's slug) so the heading can drop them down. `sections` itself is
+// kept untouched for Origami / the scrubber / data-sections (label/href/shape).
+const pages = await getCollection("pages", (p) => !p.data.draft);
+const tree = buildPageTree(pages);
+const sectionsWithChildren = sections.map((s) => {
+  const node = [...tree.values()].find((n) => n.route === s.href);
+  const children: ChildLink[] = node ? sortedChildren(pages, tree, node.id) : [];
+  return { ...s, children };
+});
 ---
 
 <Layout>
   <section class="content" data-sections={JSON.stringify(sections)}>
     <Origami id="shape-shifter" items={sections} />
-    <SectionHeading id="section-heading" sections={sections} />
+    <SectionHeading id="section-heading" sections={sectionsWithChildren} />
     <ShapeScrubber id="shape-scrubber" sections={sections} />
   </section>
 </Layout>
@@ -63,18 +75,6 @@ const sections = settings?.data.landingPageSettings.links ?? [];
     anim = instance;
     instance.startLoop();
 
-    const headingLinks = Array.from(
-      document.querySelectorAll<HTMLAnchorElement>(
-        "#section-heading .heading-link",
-      ),
-    );
-
-    // Share the morph duration with the heading so its crossfade spans the
-    // whole transition (consumed in SectionHeading.astro via --morph-duration)
-    // instead of finishing early while the contour is still morphing.
-    document
-      .querySelector<HTMLElement>("#section-heading")
-      ?.style.setProperty("--morph-duration", `${instance.cfg.morphDuration}s`);
     const scrubber = document.querySelector<HTMLInputElement>(
       "#shape-scrubber .scrubber-input",
     )!;
@@ -154,20 +154,6 @@ const sections = settings?.data.landingPageSettings.links ?? [];
       else if (v > prevScrub + 0.001) thumb.classList.remove("is-flipped");
       prevScrub = v;
     });
-
-    const sync = () => {
-      const current = instance.currentShape;
-      for (const link of headingLinks) {
-        link.classList.toggle(
-          "is-active",
-          Number(link.dataset.shapeIndex) === current,
-        );
-      }
-
-      if (scrubber.value !== String(current)) scrubber.value = String(current);
-    };
-
-    instance.onChange(sync);
   };
 
   const destroyHome = () => {
@@ -191,7 +177,7 @@ const sections = settings?.data.landingPageSettings.links ?? [];
     place-content: center;
     place-items: center;
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-rows: minmax(0, 1fr) auto;
     grid-template-areas:
       "origami"
       "heading";
