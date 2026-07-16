@@ -30,6 +30,8 @@ const footerLinks = settings?.data?.footerLinks ?? [];
   </head>
   <body>
     <aside class="rail" id="site-nav" aria-label="Site navigation">
+      {/* Tap affordance for touch: 3-line grip that fades out once open. */}
+      <div class="rail__grip" aria-hidden="true"></div>
       {/* Persistent vertical wordmark — the idle indicator and a home link. */}
       <!-- <a class="rail__mark" href="/" aria-label={`${siteName} — home`}>
         {siteName}
@@ -68,7 +70,7 @@ const footerLinks = settings?.data?.footerLinks ?? [];
   }
 
   /* Desktop: hover/focus reveals the menu (--mouse = hover-capable + fine
-     pointer). Touch devices get the slide/tap path below instead of a :hover
+     pointer). Touch devices get the tap path below instead of a :hover
      that never fires and leaves the menu stuck at opacity:0. */
   @media (--mouse) {
     .rail:hover,
@@ -87,7 +89,7 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     border-right: 1px solid var(--border-color);
     overflow: hidden;
     position: relative;
-    max-height: 100vh;
+    max-height: 100dvh;
     position: sticky;
     top: 0;
 
@@ -104,6 +106,26 @@ const footerLinks = settings?.data?.footerLinks ?? [];
       border-left: 1px solid var(--border-color);
       right: 5px;
     }
+  }
+
+  /* Tap affordance for touch. Three hairlines via layered gradients, centered.
+     pointer-events:none so the tap lands on the rail (which toggles). Hidden by
+     default; the --touch block below shows it and fades it once the drawer opens. */
+  .rail__grip {
+    position: absolute;
+    inset: 0;
+    width: 1.4rem;
+    height: 0.5rem;
+    margin: auto;
+    pointer-events: none;
+    display: none;
+    color: light-dark(var(--gray-3), var(--gray-7));
+    background:
+      linear-gradient(currentColor, currentColor) center top / 100% 1px no-repeat,
+      linear-gradient(currentColor, currentColor) center / 100% 1px no-repeat,
+      linear-gradient(currentColor, currentColor) center bottom / 100% 1px no-repeat;
+    rotate: 90deg;
+    transition: opacity 0.2s ease;
   }
 
   .rail__mark {
@@ -188,10 +210,9 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     margin: 0;
   }
 
-  /* Touch: the rail itself is the handle. Drag it open/closed or tap to toggle
-     (see the script below). Widening it pushes <main> off the right edge for
-     free via the body grid + overflow-x: clip. The open state is driven by
-     html[data-nav-open] (set by JS on tap/drag) and :focus-within (keyboard). */
+  /* Touch: tap the rail to toggle. Widening it pushes <main> off the right edge
+     for free via the body grid + overflow-x: clip. The open state is driven by
+     html[data-nav-open] (set by JS on tap) and :focus-within (keyboard). */
   @media (--touch) {
     html[data-nav-open] .rail,
     .rail:focus-within {
@@ -201,9 +222,13 @@ const footerLinks = settings?.data?.footerLinks ?? [];
       overflow: hidden; /* lock background scroll while the rail is open */
     }
     .rail {
-      touch-action: pan-y; /* claim the horizontal drag; let vertical scroll through */
-      cursor: ew-resize;
-      user-select: none; /* avoid selecting menu text while dragging the rail */
+      touch-action: manipulation; /* snappy taps, no double-tap-zoom, scroll still works */
+    }
+    .rail__grip {
+      display: block; /* reveal the tap affordance only on touch pointers */
+    }
+    html[data-nav-open] .rail__grip {
+      opacity: 0; /* menu is visible — hide the grip */
     }
     html[data-nav-open] .rail .menu,
     .rail:focus-within .menu {
@@ -219,7 +244,8 @@ const footerLinks = settings?.data?.footerLinks ?? [];
   @media (prefers-reduced-motion: reduce) {
     .rail,
     .menu__link,
-    .rail__mark {
+    .rail__mark,
+    .rail__grip {
       transition: none;
     }
   }
@@ -289,16 +315,14 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     };
   });
 
-  // ── Mobile/touch nav: the rail is a slide/tap handle ───────────────
+  // ── Mobile/touch nav: tap the rail to toggle ───────────────────────
   // On hover-capable pointers the CSS :hover path opens the rail (desktop), so
-  // this block no-ops there. On touch (no hover) the rail opens by dragging it
-  // or tapping it; widening it pushes <main> off the right edge. Bound on
+  // this block no-ops there. On touch (no hover) a tap on the rail toggles the
+  // drawer open/closed; widening it pushes <main> off the right edge. Bound on
   // astro:page-load so it survives ClientRouter morphs, deduped via data-bound.
   const NAV_ATTR = "data-nav-open";
   const isTouch = () =>
     window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-  const RAIL_COLLAPSED = 32; // var(--size-7) = 2rem
-  const railOpenWidthPx = () => Math.max(300, window.innerWidth * 0.85);
 
   const setNavOpen = (open: boolean) => {
     document.documentElement.toggleAttribute(NAV_ATTR, open);
@@ -317,7 +341,8 @@ const footerLinks = settings?.data?.footerLinks ?? [];
     if (!rail || rail.dataset.bound === "1") return; // morph kept it → skip rebind
     rail.dataset.bound = "1";
 
-    // Tap the strip to toggle; tap a link to navigate + close.
+    // Tap the rail to toggle; tap a link to navigate + close. With the drag gone
+    // every tap is a clean click — no threshold, no stray-click suppression.
     rail.addEventListener("click", (e) => {
       if ((e.target as Element).closest("a")) setNavOpen(false);
       else setNavOpen(!document.documentElement.hasAttribute(NAV_ATTR));
@@ -329,64 +354,6 @@ const footerLinks = settings?.data?.footerLinks ?? [];
       ) {
         setNavOpen(false);
       }
-    });
-
-    // Drag the rail open/closed, snapping past the midpoint on release. Track on
-    // window (not pointer capture) so a fast drag keeps flowing even if the
-    // pointer briefly leaves the rail, and so the subsequent click still targets
-    // the element under the finger (e.g. a link) normally.
-    let dragging = false;
-    let startX = 0;
-    let startWidth = 0;
-    let moved = false;
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!dragging) return;
-      const dx = e.clientX - startX;
-      if (Math.abs(dx) > 6) moved = true;
-      else return;
-      const width = Math.min(
-        Math.max(RAIL_COLLAPSED, startWidth + dx),
-        railOpenWidthPx(),
-      );
-      rail.style.width = `${width}px`;
-    };
-
-    const endDrag = () => {
-      if (!dragging) return;
-      dragging = false;
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", endDrag);
-      window.removeEventListener("pointercancel", endDrag);
-      if (moved) {
-        // A drag can synthesize a stray click on the element under the finger —
-        // swallow it so a drag ending on a link doesn't navigate.
-        const suppress = (ev: Event) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          rail.removeEventListener("click", suppress, true);
-        };
-        rail.addEventListener("click", suppress, true);
-        const current = rail.getBoundingClientRect().width;
-        const midpoint = (RAIL_COLLAPSED + railOpenWidthPx()) / 2;
-        const isOpen = document.documentElement.hasAttribute(NAV_ATTR);
-        if (current > midpoint && !isOpen) setNavOpen(true);
-        else if (current <= midpoint && isOpen) setNavOpen(false);
-      }
-      rail.style.transition = ""; // restore the CSS width transition
-      rail.style.width = ""; // fall back to the stylesheet value → animates
-    };
-
-    rail.addEventListener("pointerdown", (e) => {
-      if (e.button && e.button !== 0) return; // primary pointer only
-      dragging = true;
-      moved = false;
-      startX = e.clientX;
-      startWidth = rail.getBoundingClientRect().width;
-      rail.style.transition = "none"; // 1:1 with the finger during the drag
-      window.addEventListener("pointermove", onPointerMove);
-      window.addEventListener("pointerup", endDrag);
-      window.addEventListener("pointercancel", endDrag);
     });
   };
 
